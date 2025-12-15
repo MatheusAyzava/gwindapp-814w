@@ -1,0 +1,108 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model Material {
+  id             Int        @id @default(autoincrement())
+  codigoItem     String     @unique
+  descricao      String
+  unidade        String
+  estoqueInicial Float      @default(0)
+  estoqueAtual   Float      @default(0)
+  medicoes       Medicao[]
+}
+
+model Medicao {
+  id                 Int       @id @default(autoincrement())
+  materialId         Int
+  data               DateTime  @default(now())
+
+  // Dados gerais do apontamento
+  dia                DateTime?        // dia da medição
+  semana             String?          // semana
+  cliente            String?
+  projeto            String
+  escala             String?
+  quantidadeTecnicos Int?
+  tecnicoLider       String?
+  nomesTecnicos      String?
+  supervisor         String?
+  tipoIntervalo      String?
+  tipoAcesso         String?
+  pa                 String?          // pá
+  torre              String?
+  plataforma         String?
+  equipe             String?
+  tipoHora           String?
+  quantidadeEventos  Int?
+
+  // Bloco de horas principais (apenas 1 bloco consolidado neste modelo)
+  horaInicio         String?
+  horaFim            String?
+
+  // Dados do dano e materiais
+  tipoDano           String?
+  danoCodigo         String?
+  larguraDanoMm      Float?
+  comprimentoDanoMm  Float?
+  etapaProcesso      String?
+  etapaLixamento     String?
+
+  // Resina
+  resinaTipo         String?
+  resinaQuantidade   Float?
+  resinaCatalisador  String?
+  resinaLote         String?
+  resinaValidade     String?
+
+  // Massa
+  massaTipo          String?
+  massaQuantidade    Float?
+  massaCatalisador   String?
+  massaLote          String?
+  massaValidade      String?
+
+  // Núcleo
+  nucleoTipo         String?
+  nucleoEspessuraMm  Float?
+
+  // PU
+  puTipo             String?
+  puMassaPeso        Float?
+  puCatalisadorPeso  Float?
+  puLote             String?
+  puValidade         String?
+
+  // Gel
+  gelTipo            String?
+  gelPeso            Float?
+  gelCatalisadorPeso Float?
+  gelLote            String?
+  gelValidade        String?
+
+  // Outros
+  retrabalho         Boolean?
+
+  quantidadeConsumida Float
+  usuarioId          Int?
+  origem             String    @default("mobile") // mobile, web, importacao
+
+  material Material @relation(fields: [materialId], references: [id])
+  usuario  Usuario? @relation(fields: [usuarioId], references: [id])
+}
+
+model Usuario {
+  id       Int       @id @default(autoincrement())
+  nome     String
+  email    String    @unique
+  senhaHash String
+  perfil   String    // tecnico, supervisor, admin
+  medicoes Medicao[]
+}
+
+
