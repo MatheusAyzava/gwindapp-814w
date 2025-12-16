@@ -3,18 +3,34 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 model Material {
-  id             Int        @id @default(autoincrement())
-  codigoItem     String     @unique
-  descricao      String
-  unidade        String
-  estoqueInicial Float      @default(0)
-  estoqueAtual   Float      @default(0)
-  medicoes       Medicao[]
+  id                    Int        @id @default(autoincrement())
+  codigoItem            String
+  descricao             String
+  unidade               String
+  estoqueInicial        Float      @default(0)
+  estoqueAtual          Float      @default(0)
+  
+  // Campos adicionais da planilha Excel
+  codigoEstoque         String?    // Código do Estoque
+  descricaoEstoque      String?    // Descrição do E
+  confirmado            Float?     // Confirmado
+  pedido               Float?     // Pedido
+  disponivel            Float?     // Disponível
+  precoItem             Float?     // Preço do item
+  total                 Float?     // Total
+  codigoProjeto         String?    // Cód. Projeto
+  descricaoProjeto      String?    // Desc. Projeto
+  centroCustos          String?    // Centro de Custos - Dimensão 1
+  
+  medicoes              Medicao[]
+  
+  // Chave única composta: mesmo item pode existir em projetos diferentes
+  @@unique([codigoItem, codigoProjeto])
 }
 
 model Medicao {

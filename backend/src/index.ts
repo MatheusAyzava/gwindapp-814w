@@ -17,7 +17,16 @@ const prisma = new PrismaClient();
 const PORT = process.env.PORT || 4001;
 
 app.use(helmet());
-app.use(cors());
+// CORS: permitir requisições do frontend Netlify e localhost
+app.use(cors({
+  origin: [
+    'https://gwind-app-test.netlify.app',
+    'http://localhost:5174',
+    'http://localhost:5173',
+    'http://localhost:3000'
+  ],
+  credentials: true
+}));
 // Aumentar limite de tamanho do body para permitir importações grandes
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
@@ -48,13 +57,22 @@ app.post("/materiais", async (req, res) => {
 
   const valorEstoqueInicial = Number(estoqueInicial ?? 0);
 
+  // Se codigoProjeto não for fornecido, usa null (permite ter materiais sem projeto)
+  const codigoProjetoValue = req.body.codigoProjeto || null;
+  
   const material = await prisma.material.upsert({
-    where: { codigoItem },
+    where: {
+      codigoItem_codigoProjeto: {
+        codigoItem,
+        codigoProjeto: codigoProjetoValue,
+      },
+    },
     update: {
       descricao,
       unidade,
       estoqueInicial: valorEstoqueInicial,
       estoqueAtual: valorEstoqueInicial,
+      codigoProjeto: codigoProjetoValue,
     },
     create: {
       codigoItem,
@@ -62,6 +80,7 @@ app.post("/materiais", async (req, res) => {
       unidade,
       estoqueInicial: valorEstoqueInicial,
       estoqueAtual: valorEstoqueInicial,
+      codigoProjeto: codigoProjetoValue,
     },
   });
 
@@ -103,8 +122,15 @@ app.post("/materiais/import", async (req, res) => {
 
     const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
 
+    const codigoProjetoValue = item.codigoProjeto || null;
+    
     const material = await prisma.material.upsert({
-      where: { codigoItem: item.codigoItem },
+      where: {
+        codigoItem_codigoProjeto: {
+          codigoItem: item.codigoItem,
+          codigoProjeto: codigoProjetoValue,
+        },
+      },
       update: {
         descricao: item.descricao,
         unidade: item.unidade,
@@ -117,7 +143,7 @@ app.post("/materiais/import", async (req, res) => {
         disponivel: item.disponivel ?? undefined,
         precoItem: item.precoItem ?? undefined,
         total: item.total ?? undefined,
-        codigoProjeto: item.codigoProjeto || undefined,
+        codigoProjeto: codigoProjetoValue || undefined,
         descricaoProjeto: item.descricaoProjeto || undefined,
         centroCustos: item.centroCustos || undefined,
       },
@@ -134,7 +160,7 @@ app.post("/materiais/import", async (req, res) => {
         disponivel: item.disponivel ?? undefined,
         precoItem: item.precoItem ?? undefined,
         total: item.total ?? undefined,
-        codigoProjeto: item.codigoProjeto || undefined,
+        codigoProjeto: codigoProjetoValue || undefined,
         descricaoProjeto: item.descricaoProjeto || undefined,
         centroCustos: item.centroCustos || undefined,
       },
@@ -154,13 +180,21 @@ app.post("/materiais/import-smartsheet", async (_req, res) => {
     const resultados = [];
 
     for (const item of itens) {
+      const codigoProjetoValue = item.codigoProjeto || null;
+      
       const material = await prisma.material.upsert({
-        where: { codigoItem: item.codigoItem },
+        where: {
+          codigoItem_codigoProjeto: {
+            codigoItem: item.codigoItem,
+            codigoProjeto: codigoProjetoValue,
+          },
+        },
         update: {
           descricao: item.descricao,
           unidade: item.unidade,
           estoqueInicial: item.estoqueInicial,
           estoqueAtual: item.estoqueInicial,
+          codigoProjeto: codigoProjetoValue || undefined,
         },
         create: {
           codigoItem: item.codigoItem,
@@ -168,6 +202,7 @@ app.post("/materiais/import-smartsheet", async (_req, res) => {
           unidade: item.unidade,
           estoqueInicial: item.estoqueInicial,
           estoqueAtual: item.estoqueInicial,
+          codigoProjeto: codigoProjetoValue || undefined,
         },
       });
 
@@ -288,8 +323,15 @@ app.post("/materiais/import-excel", upload.single("arquivo"), async (req, res) =
       const centroCustos = idxCentroCustos !== -1 ? String(linha[idxCentroCustos] || "").trim() : null;
 
       try {
+        const codigoProjetoValue = codigoProjeto || null;
+        
         const material = await prisma.material.upsert({
-          where: { codigoItem },
+          where: {
+            codigoItem_codigoProjeto: {
+              codigoItem,
+              codigoProjeto: codigoProjetoValue,
+            },
+          },
           update: {
             descricao,
             unidade: unidade || "KG",
@@ -302,7 +344,7 @@ app.post("/materiais/import-excel", upload.single("arquivo"), async (req, res) =
             disponivel: disponivel ?? undefined,
             precoItem: precoItem ?? undefined,
             total: total ?? undefined,
-            codigoProjeto: codigoProjeto || undefined,
+            codigoProjeto: codigoProjetoValue || undefined,
             descricaoProjeto: descricaoProjeto || undefined,
             centroCustos: centroCustos || undefined,
           },
@@ -319,7 +361,7 @@ app.post("/materiais/import-excel", upload.single("arquivo"), async (req, res) =
             disponivel: disponivel ?? undefined,
             precoItem: precoItem ?? undefined,
             total: total ?? undefined,
-            codigoProjeto: codigoProjeto || undefined,
+            codigoProjeto: codigoProjetoValue || undefined,
             descricaoProjeto: descricaoProjeto || undefined,
             centroCustos: centroCustos || undefined,
           },
@@ -415,7 +457,9 @@ app.post("/medicoes", async (req, res) => {
     return res.status(400).json({ error: "Dados da medição incompletos." });
   }
 
-  const material = await prisma.material.findUnique({
+  // Buscar material - pode ter múltiplos com mesmo código em projetos diferentes
+  // Por enquanto busca o primeiro, mas idealmente deveria buscar pelo projeto também
+  const material = await prisma.material.findFirst({
     where: { codigoItem },
   });
 
@@ -522,6 +566,29 @@ app.get("/medicoes", async (_req, res) => {
   });
 
   res.json(medicoes);
+});
+
+// Limpar todos os dados (materiais e medições) - CUIDADO: Esta ação é irreversível!
+app.delete("/materiais/limpar-tudo", async (_req, res) => {
+  try {
+    // Deletar primeiro as medições (têm foreign key para materiais)
+    await prisma.medicao.deleteMany({});
+    
+    // Depois deletar os materiais
+    const resultado = await prisma.material.deleteMany({});
+    
+    res.json({
+      mensagem: "Todos os dados foram apagados com sucesso.",
+      materiaisDeletados: resultado.count,
+    });
+  } catch (e: any) {
+    // eslint-disable-next-line no-console
+    console.error("[Limpar] Erro ao apagar dados:", e.message);
+    res.status(500).json({ 
+      error: "Erro ao apagar dados.",
+      detalhes: e.message 
+    });
+  }
 });
 
 app.listen(PORT, () => {
