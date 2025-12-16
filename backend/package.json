@@ -5,6 +5,7 @@
   "license": "MIT",
   "scripts": {
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "prebuild": "node -e \"require('child_process').execSync('node node_modules/prisma/build/index.js generate', {stdio: 'inherit'})\"",
     "build": "tsc",
     "start": "node dist/index.js",
     "prisma:migrate": "prisma migrate dev",
@@ -22,6 +23,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@types/cors": "^2.8.17",
     "@types/multer": "^2.0.0",
     "ts-node-dev": "^2.0.0",
     "typescript": "^5.5.0"

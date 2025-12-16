@@ -4,33 +4,11 @@ import cors from "cors";
 import helmet from "helmet";
 import multer from "multer";
 import * as XLSX from "xlsx";
-import { execSync } from "child_process";
-import { existsSync } from "fs";
-import { join } from "path";
 import { PrismaClient } from "@prisma/client";
 import {
   importarMateriaisDoSmartsheet,
   registrarMedicaoNoSmartsheet,
 } from "./smartsheetService";
-
-// Gerar Prisma Client se não existir (para funcionar no Render)
-const prismaClientPath = join(__dirname, "../node_modules/.prisma/client");
-if (!existsSync(prismaClientPath)) {
-  console.log("⚠️ Prisma Client não encontrado. Tentando gerar...");
-  try {
-    // Tentar gerar usando node diretamente
-    const prismaPath = join(__dirname, "../node_modules/prisma/build/index.js");
-    if (existsSync(prismaPath)) {
-      execSync(`node "${prismaPath}" generate`, { stdio: "inherit" });
-      console.log("✅ Prisma Client gerado com sucesso!");
-    } else {
-      console.log("⚠️ Prisma não encontrado. Continuando sem gerar...");
-    }
-  } catch (e: any) {
-    console.error("⚠️ Erro ao gerar Prisma Client:", e.message);
-    console.log("⚠️ Continuando sem gerar. Pode dar erro ao usar o Prisma.");
-  }
-}
 
 const app = express();
 const prisma = new PrismaClient();
