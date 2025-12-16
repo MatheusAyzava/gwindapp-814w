@@ -98,113 +98,114 @@ app.post("/materiais", async (req, res) => {
 
 // Importar vários materiais de uma vez
 app.post("/materiais/import", async (req, res) => {
-  const itens: Array<{
-    codigoItem: string;
-    descricao: string;
-    unidade: string;
-    estoqueInicial?: number;
-    codigoEstoque?: string;
-    descricaoEstoque?: string;
-    confirmado?: number;
-    pedido?: number;
-    disponivel?: number;
-    precoItem?: number;
-    total?: number;
-    codigoProjeto?: string;
-    descricaoProjeto?: string;
-    centroCustos?: string;
-  }> = req.body?.itens;
+  try {
+    const itens: Array<{
+      codigoItem: string;
+      descricao: string;
+      unidade: string;
+      estoqueInicial?: number;
+      codigoEstoque?: string;
+      descricaoEstoque?: string;
+      confirmado?: number;
+      pedido?: number;
+      disponivel?: number;
+      precoItem?: number;
+      total?: number;
+      codigoProjeto?: string;
+      descricaoProjeto?: string;
+      centroCustos?: string;
+    }> = req.body?.itens;
 
-  if (!Array.isArray(itens) || itens.length === 0) {
-    return res
-      .status(400)
-      .json({ error: "Envie um array 'itens' com pelo menos um material." });
-  }
-
-  console.log(`[Import] Recebidos ${itens.length} itens para importar`);
-
-  const resultados = [];
-  const erros: string[] = [];
-
-  for (const item of itens) {
-    if (!item.codigoItem || !item.descricao || !item.unidade) {
-      // pula itens inválidos, mas continua importação
-      continue;
+    if (!Array.isArray(itens) || itens.length === 0) {
+      return res
+        .status(400)
+        .json({ error: "Envie um array 'itens' com pelo menos um material." });
     }
 
-    try {
-      const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
+    console.log(`[Import] Recebidos ${itens.length} itens para importar`);
 
-      const codigoProjetoValue = item.codigoProjeto || "";
-      
-      const material = await prisma.material.upsert({
-      where: {
-        codigoItem_codigoProjeto: {
-          codigoItem: item.codigoItem,
-          codigoProjeto: codigoProjetoValue,
+    const resultados = [];
+    const erros: string[] = [];
+
+    for (const item of itens) {
+      if (!item.codigoItem || !item.descricao || !item.unidade) {
+        // pula itens inválidos, mas continua importação
+        continue;
+      }
+
+      try {
+        const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
+
+        const codigoProjetoValue = item.codigoProjeto || "";
+        
+        const material = await prisma.material.upsert({
+        where: {
+          codigoItem_codigoProjeto: {
+            codigoItem: item.codigoItem,
+            codigoProjeto: codigoProjetoValue,
+          },
         },
-      },
-      update: {
-        descricao: item.descricao,
-        unidade: item.unidade,
-        estoqueInicial: valorEstoqueInicial,
-        estoqueAtual: valorEstoqueInicial,
-        codigoEstoque: item.codigoEstoque || undefined,
-        descricaoEstoque: item.descricaoEstoque || undefined,
-        confirmado: item.confirmado ?? undefined,
-        pedido: item.pedido ?? undefined,
-        disponivel: item.disponivel ?? undefined,
-        precoItem: item.precoItem ?? undefined,
-        total: item.total ?? undefined,
-        codigoProjeto: codigoProjetoValue || undefined,
-        descricaoProjeto: item.descricaoProjeto || undefined,
-        centroCustos: item.centroCustos || undefined,
-      },
-      create: {
-        codigoItem: item.codigoItem,
-        descricao: item.descricao,
-        unidade: item.unidade,
-        estoqueInicial: valorEstoqueInicial,
-        estoqueAtual: valorEstoqueInicial,
-        codigoEstoque: item.codigoEstoque || undefined,
-        descricaoEstoque: item.descricaoEstoque || undefined,
-        confirmado: item.confirmado ?? undefined,
-        pedido: item.pedido ?? undefined,
-        disponivel: item.disponivel ?? undefined,
-        precoItem: item.precoItem ?? undefined,
-        total: item.total ?? undefined,
-        codigoProjeto: codigoProjetoValue || undefined,
-        descricaoProjeto: item.descricaoProjeto || undefined,
-        centroCustos: item.centroCustos || undefined,
-      },
-      });
+        update: {
+          descricao: item.descricao,
+          unidade: item.unidade,
+          estoqueInicial: valorEstoqueInicial,
+          estoqueAtual: valorEstoqueInicial,
+          codigoEstoque: item.codigoEstoque || undefined,
+          descricaoEstoque: item.descricaoEstoque || undefined,
+          confirmado: item.confirmado ?? undefined,
+          pedido: item.pedido ?? undefined,
+          disponivel: item.disponivel ?? undefined,
+          precoItem: item.precoItem ?? undefined,
+          total: item.total ?? undefined,
+          codigoProjeto: codigoProjetoValue || undefined,
+          descricaoProjeto: item.descricaoProjeto || undefined,
+          centroCustos: item.centroCustos || undefined,
+        },
+        create: {
+          codigoItem: item.codigoItem,
+          descricao: item.descricao,
+          unidade: item.unidade,
+          estoqueInicial: valorEstoqueInicial,
+          estoqueAtual: valorEstoqueInicial,
+          codigoEstoque: item.codigoEstoque || undefined,
+          descricaoEstoque: item.descricaoEstoque || undefined,
+          confirmado: item.confirmado ?? undefined,
+          pedido: item.pedido ?? undefined,
+          disponivel: item.disponivel ?? undefined,
+          precoItem: item.precoItem ?? undefined,
+          total: item.total ?? undefined,
+          codigoProjeto: codigoProjetoValue || undefined,
+          descricaoProjeto: item.descricaoProjeto || undefined,
+          centroCustos: item.centroCustos || undefined,
+        },
+        });
 
-      resultados.push(material);
-    } catch (e: any) {
-      const erroMsg = `Erro ao salvar ${item.codigoItem}: ${e.message}`;
-      console.error(`[Import] ${erroMsg}`);
-      erros.push(erroMsg);
+        resultados.push(material);
+      } catch (e: any) {
+        const erroMsg = `Erro ao salvar ${item.codigoItem}: ${e.message}`;
+        console.error(`[Import] ${erroMsg}`);
+        erros.push(erroMsg);
+      }
     }
-  }
 
-  console.log(`[Import] Importados ${resultados.length} de ${itens.length} itens`);
-  if (erros.length > 0) {
-    console.error(`[Import] ${erros.length} erros durante importação`);
-  }
+    console.log(`[Import] Importados ${resultados.length} de ${itens.length} itens`);
+    if (erros.length > 0) {
+      console.error(`[Import] ${erros.length} erros durante importação`);
+    }
 
-  res.json({ 
-    quantidadeImportada: resultados.length, 
-    materiais: resultados,
-    erros: erros.length > 0 ? erros : undefined
-  });
-} catch (e: any) {
-  console.error("[Import] Erro geral na importação:", e.message);
-  console.error("[Import] Stack:", e.stack);
-  res.status(500).json({ 
-    error: "Erro ao importar materiais.",
-    detalhes: e.message
-  });
-}
+    res.json({ 
+      quantidadeImportada: resultados.length, 
+      materiais: resultados,
+      erros: erros.length > 0 ? erros : undefined
+    });
+  } catch (e: any) {
+    console.error("[Import] Erro geral na importação:", e.message);
+    console.error("[Import] Stack:", e.stack);
+    res.status(500).json({ 
+      error: "Erro ao importar materiais.",
+      detalhes: e.message
+    });
+  }
 });
 
 // Importar materiais a partir do Smartsheet
