@@ -600,9 +600,23 @@ app.delete("/materiais/limpar-tudo", async (_req, res) => {
   }
 });
 
+// Tratamento de erros não capturados
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
+
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
 app.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Backend rodando na porta ${PORT}`);
+}).on('error', (err: any) => {
+  // eslint-disable-next-line no-console
+  console.error('Erro ao iniciar servidor:', err);
+  process.exit(1);
 });
 
 
