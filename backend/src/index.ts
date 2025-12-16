@@ -16,8 +16,7 @@ const prisma = new PrismaClient();
 // Deixamos 4001 para não conflitar com o servidor de passagens (3001).
 const PORT = process.env.PORT || 4001;
 
-app.use(helmet());
-// CORS: permitir requisições do frontend Netlify e localhost
+// CORS: configurar ANTES do helmet para evitar conflitos
 app.use(cors({
   origin: [
     'https://gwind-app-test.netlify.app',
@@ -25,7 +24,13 @@ app.use(cors({
     'http://localhost:5173',
     'http://localhost:3000'
   ],
-  credentials: true
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
 }));
 // Aumentar limite de tamanho do body para permitir importações grandes
 app.use(express.json({ limit: '50mb' }));
