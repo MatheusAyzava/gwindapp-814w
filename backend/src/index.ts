@@ -121,7 +121,10 @@ app.post("/materiais/import", async (req, res) => {
       .json({ error: "Envie um array 'itens' com pelo menos um material." });
   }
 
+  console.log(`[Import] Recebidos ${itens.length} itens para importar`);
+
   const resultados = [];
+  const erros: string[] = [];
 
   for (const item of itens) {
     if (!item.codigoItem || !item.descricao || !item.unidade) {
@@ -129,11 +132,12 @@ app.post("/materiais/import", async (req, res) => {
       continue;
     }
 
-    const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
+    try {
+      const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
 
-    const codigoProjetoValue = item.codigoProjeto || "";
-    
-    const material = await prisma.material.upsert({
+      const codigoProjetoValue = item.codigoProjeto || "";
+      
+      const material = await prisma.material.upsert({
       where: {
         codigoItem_codigoProjeto: {
           codigoItem: item.codigoItem,
@@ -173,12 +177,34 @@ app.post("/materiais/import", async (req, res) => {
         descricaoProjeto: item.descricaoProjeto || undefined,
         centroCustos: item.centroCustos || undefined,
       },
-    });
+      });
 
-    resultados.push(material);
+      resultados.push(material);
+    } catch (e: any) {
+      const erroMsg = `Erro ao salvar ${item.codigoItem}: ${e.message}`;
+      console.error(`[Import] ${erroMsg}`);
+      erros.push(erroMsg);
+    }
   }
 
-  res.json({ quantidadeImportada: resultados.length, materiais: resultados });
+  console.log(`[Import] Importados ${resultados.length} de ${itens.length} itens`);
+  if (erros.length > 0) {
+    console.error(`[Import] ${erros.length} erros durante importação`);
+  }
+
+  res.json({ 
+    quantidadeImportada: resultados.length, 
+    materiais: resultados,
+    erros: erros.length > 0 ? erros : undefined
+  });
+} catch (e: any) {
+  console.error("[Import] Erro geral na importação:", e.message);
+  console.error("[Import] Stack:", e.stack);
+  res.status(500).json({ 
+    error: "Erro ao importar materiais.",
+    detalhes: e.message
+  });
+}
 });
 
 // Importar materiais a partir do Smartsheet
