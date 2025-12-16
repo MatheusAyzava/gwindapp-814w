@@ -127,7 +127,7 @@ app.post("/materiais/import", async (req, res) => {
 
     const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
 
-    const codigoProjetoValue = item.codigoProjeto || null;
+    const codigoProjetoValue = item.codigoProjeto || "";
     
     const material = await prisma.material.upsert({
       where: {
@@ -185,7 +185,7 @@ app.post("/materiais/import-smartsheet", async (_req, res) => {
     const resultados = [];
 
     for (const item of itens) {
-      const codigoProjetoValue = item.codigoProjeto || null;
+      const codigoProjetoValue = (item as any).codigoProjeto || "";
       
       const material = await prisma.material.upsert({
         where: {
@@ -328,7 +328,7 @@ app.post("/materiais/import-excel", upload.single("arquivo"), async (req, res) =
       const centroCustos = idxCentroCustos !== -1 ? String(linha[idxCentroCustos] || "").trim() : null;
 
       try {
-        const codigoProjetoValue = codigoProjeto || null;
+        const codigoProjetoValue = codigoProjeto || "";
         
         const material = await prisma.material.upsert({
           where: {
