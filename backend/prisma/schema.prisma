@@ -3,8 +3,12 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // IMPORTANTE (Supabase + Pooler/pgBouncer):
+  // - Use DATABASE_URL apontando para o Pooler (porta 6543) com ?pgbouncer=true&sslmode=require
+  // - Use DIRECT_URL apontando para o Primary DB (porta 5432) para migrações
+  directUrl = env("DIRECT_URL")
 }
 
 model Material {

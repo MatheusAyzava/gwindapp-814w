@@ -16,6 +16,14 @@ const prisma = new PrismaClient();
 // Deixamos 4001 para não conflitar com o servidor de passagens (3001).
 const PORT = process.env.PORT || 4001;
 
+// Logar problemas de conexão com o banco mais cedo (ajuda a diagnosticar "fica carregando")
+async function conectarBancoComTimeout(ms: number) {
+  const timeout = new Promise((_, reject) =>
+    setTimeout(() => reject(new Error(`Timeout ao conectar no banco após ${ms}ms`)), ms),
+  );
+  await Promise.race([prisma.$connect(), timeout]);
+}
+
 // CORS: configurar ANTES do helmet para evitar conflitos
 app.use(cors({
   origin: [
@@ -48,12 +56,31 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok" });
 });
 
+// Healthcheck com banco (para diagnosticar Render/Supabase)
+app.get("/health/db", async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: "ok", db: "ok" });
+  } catch (e: any) {
+    console.error("[DB] Healthcheck falhou:", e?.message);
+    res.status(503).json({ status: "ok", db: "erro", detalhes: e?.message });
+  }
+});
+
 // Listar materiais com saldo calculado
 app.get("/materiais", async (_req, res) => {
-  const materiais = await prisma.material.findMany({
-    orderBy: { descricao: "asc" },
-  });
-  res.json(materiais);
+  try {
+    const materiais = await prisma.material.findMany({
+      orderBy: { descricao: "asc" },
+    });
+    res.json(materiais);
+  } catch (e: any) {
+    console.error("[Materiais] Erro ao listar materiais:", e?.message);
+    res.status(503).json({
+      error: "Erro ao acessar o banco para listar materiais.",
+      detalhes: e?.message,
+    });
+  }
 });
 
 // Criar/atualizar material
@@ -645,5 +672,10 @@ app.listen(PORT, () => {
   console.error('Erro ao iniciar servidor:', err);
   process.exit(1);
 });
+
+// Conectar ao banco no startup (sem derrubar o servidor se falhar, mas logando claramente)
+conectarBancoComTimeout(15000)
+  .then(() => console.log("✅ Conexão com banco OK"))
+  .catch((e) => console.error("❌ Falha ao conectar no banco:", (e as any)?.message));
 
 
