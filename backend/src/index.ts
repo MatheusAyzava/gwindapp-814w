@@ -123,6 +123,60 @@ app.post("/materiais", async (req, res) => {
   res.json(material);
 });
 
+// Atualizar material/estoque por ID (usado pela tela de Estoque)
+app.put("/materiais/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID inválido." });
+    }
+
+    const dados: any = {};
+    if (typeof req.body?.descricao === "string") dados.descricao = req.body.descricao;
+    if (typeof req.body?.unidade === "string") dados.unidade = req.body.unidade;
+
+    if (req.body?.estoqueInicial !== undefined) dados.estoqueInicial = Number(req.body.estoqueInicial);
+    if (req.body?.estoqueAtual !== undefined) dados.estoqueAtual = Number(req.body.estoqueAtual);
+
+    if (req.body?.codigoProjeto !== undefined) dados.codigoProjeto = req.body.codigoProjeto || null;
+    if (req.body?.descricaoProjeto !== undefined) dados.descricaoProjeto = req.body.descricaoProjeto || null;
+
+    // Evitar update vazio
+    if (Object.keys(dados).length === 0) {
+      return res.status(400).json({ error: "Nenhum campo para atualizar." });
+    }
+
+    const material = await prisma.material.update({
+      where: { id },
+      data: dados,
+    });
+
+    res.json(material);
+  } catch (e: any) {
+    console.error("[Materiais] Erro ao atualizar material:", e?.message);
+    res.status(500).json({ error: "Erro ao atualizar material.", detalhes: e?.message });
+  }
+});
+
+// Remover material por ID
+app.delete("/materiais/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID inválido." });
+    }
+
+    // Apagar medições do material primeiro (FK)
+    await prisma.medicao.deleteMany({ where: { materialId: id } });
+    await prisma.material.delete({ where: { id } });
+
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[Materiais] Erro ao remover material:", e?.message);
+    res.status(500).json({ error: "Erro ao remover material.", detalhes: e?.message });
+  }
+});
+
 // Importar vários materiais de uma vez
 app.post("/materiais/import", async (req, res) => {
   try {
