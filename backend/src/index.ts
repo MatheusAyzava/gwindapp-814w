@@ -574,11 +574,21 @@ app.post("/medicoes", async (req, res) => {
     return res.status(400).json({ error: "Dados da medição incompletos." });
   }
 
-  // Buscar material - pode ter múltiplos com mesmo código em projetos diferentes
-  // Por enquanto busca o primeiro, mas idealmente deveria buscar pelo projeto também
-  const material = await prisma.material.findFirst({
-    where: { codigoItem },
-  });
+  // Buscar material considerando projeto (o mesmo item pode existir em projetos diferentes)
+  // Regra:
+  // 1) tenta por (codigoItem + codigoProjeto == projeto)
+  // 2) fallback: (codigoItem + codigoProjeto == null)
+  // 3) fallback: primeiro por codigoItem (compatibilidade)
+  const material =
+    (await prisma.material.findFirst({
+      where: { codigoItem, codigoProjeto: projeto },
+    })) ||
+    (await prisma.material.findFirst({
+      where: { codigoItem, codigoProjeto: null },
+    })) ||
+    (await prisma.material.findFirst({
+      where: { codigoItem },
+    }));
 
   if (!material) {
     return res.status(404).json({ error: "Material não encontrado." });
@@ -676,13 +686,21 @@ app.post("/medicoes", async (req, res) => {
 
 // Listar medições (visão tipo grid)
 app.get("/medicoes", async (_req, res) => {
-  const medicoes = await prisma.medicao.findMany({
-    include: { material: true },
-    orderBy: { id: "desc" },
-    take: 500, // limitar para não pesar; depois podemos paginar
-  });
+  try {
+    const medicoes = await prisma.medicao.findMany({
+      include: { material: true },
+      orderBy: { id: "desc" },
+      take: 500, // limitar para não pesar; depois podemos paginar
+    });
 
-  res.json(medicoes);
+    res.json(medicoes);
+  } catch (e: any) {
+    console.error("[Medicoes] Erro ao listar medições:", e?.message);
+    res.status(503).json({
+      error: "Erro ao acessar o banco para listar medições.",
+      detalhes: e?.message,
+    });
+  }
 });
 
 // Limpar todos os dados (materiais e medições) - CUIDADO: Esta ação é irreversível!
