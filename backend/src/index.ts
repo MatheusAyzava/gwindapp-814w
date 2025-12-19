@@ -292,50 +292,79 @@ app.post("/materiais/import", async (req, res) => {
 // Importar materiais a partir do Smartsheet
 app.post("/materiais/import-smartsheet", async (_req, res) => {
   try {
+    // eslint-disable-next-line no-console
+    console.log("[Smartsheet] Iniciando importação de materiais...");
     const itens = await importarMateriaisDoSmartsheet();
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ${itens.length} itens encontrados na planilha`);
 
     const resultados = [];
+    const erros: string[] = [];
 
     for (const item of itens) {
-      const codigoProjetoValue = (item as any).codigoProjeto || "";
-      
-      const material = await prisma.material.upsert({
-        where: {
-          codigoItem_codigoProjeto: {
-            codigoItem: item.codigoItem,
-            codigoProjeto: codigoProjetoValue,
+      try {
+        const codigoProjetoValue = (item as any).codigoProjeto || "";
+        
+        const material = await prisma.material.upsert({
+          where: {
+            codigoItem_codigoProjeto: {
+              codigoItem: item.codigoItem,
+              codigoProjeto: codigoProjetoValue,
+            },
           },
-        },
-        update: {
-          descricao: item.descricao,
-          unidade: item.unidade,
-          estoqueInicial: item.estoqueInicial,
-          estoqueAtual: item.estoqueInicial,
-          codigoProjeto: codigoProjetoValue || undefined,
-        },
-        create: {
-          codigoItem: item.codigoItem,
-          descricao: item.descricao,
-          unidade: item.unidade,
-          estoqueInicial: item.estoqueInicial,
-          estoqueAtual: item.estoqueInicial,
-          codigoProjeto: codigoProjetoValue || undefined,
-        },
-      });
+          update: {
+            descricao: item.descricao,
+            unidade: item.unidade,
+            estoqueInicial: item.estoqueInicial,
+            estoqueAtual: item.estoqueInicial,
+            codigoProjeto: codigoProjetoValue || undefined,
+          },
+          create: {
+            codigoItem: item.codigoItem,
+            descricao: item.descricao,
+            unidade: item.unidade,
+            estoqueInicial: item.estoqueInicial,
+            estoqueAtual: item.estoqueInicial,
+            codigoProjeto: codigoProjetoValue || undefined,
+          },
+        });
 
-      resultados.push(material);
+        resultados.push(material);
+      } catch (itemError: any) {
+        // eslint-disable-next-line no-console
+        console.error(`[Smartsheet] Erro ao processar item ${item.codigoItem}:`, itemError?.message);
+        erros.push(`Item ${item.codigoItem}: ${itemError?.message || "Erro desconhecido"}`);
+      }
     }
+
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Importação concluída: ${resultados.length} sucessos, ${erros.length} erros`);
 
     res.json({
       quantidadeImportada: resultados.length,
       materiais: resultados,
+      erros: erros.length > 0 ? erros : undefined,
     });
   } catch (e: any) {
     // eslint-disable-next-line no-console
-    console.error("[Smartsheet] Erro ao importar materiais:", e.message);
-    res
-      .status(500)
-      .json({ error: "Erro ao importar materiais do Smartsheet." });
+    console.error("[Smartsheet] Erro ao importar materiais:", {
+      message: e?.message,
+      response: e?.response?.data,
+      status: e?.response?.status,
+    });
+    
+    const mensagemErro = e?.response?.data?.message || e?.message || "Erro desconhecido";
+    const statusCode = e?.response?.status || 500;
+    
+    res.status(statusCode).json({ 
+      error: "Erro ao importar materiais do Smartsheet.",
+      detalhes: mensagemErro,
+      dica: !process.env.SMARTSHEET_TOKEN 
+        ? "Verifique se SMARTSHEET_TOKEN está configurado no Render."
+        : !process.env.SMARTSHEET_SHEET_MATERIAIS
+        ? "Verifique se SMARTSHEET_SHEET_MATERIAIS está configurado no Render."
+        : "Verifique os logs do servidor para mais detalhes.",
+    });
   }
 });
 
@@ -674,8 +703,50 @@ app.post("/medicoes", async (req, res) => {
     tecnicoLider,
     quantidadeTecnicos,
     nomesTecnicos,
+    supervisor,
+    tipoIntervalo,
+    tipoAcesso,
+    pa,
+    torre,
+    plataforma,
+    equipe,
+    tipoHora,
+    quantidadeEventos,
     horaInicio,
     horaFim,
+    tipoDano,
+    danoCodigo,
+    larguraDanoMm,
+    comprimentoDanoMm,
+    etapaProcesso,
+    etapaLixamento,
+    resinaTipo,
+    resinaQuantidade,
+    resinaCatalisador,
+    resinaLote,
+    resinaValidade,
+    massaTipo,
+    massaQuantidade,
+    massaCatalisador,
+    massaLote,
+    massaValidade,
+    nucleoTipo,
+    nucleoEspessuraMm,
+    puTipo,
+    puMassaPeso,
+    puCatalisadorPeso,
+    puLote,
+    puValidade,
+    gelTipo,
+    gelPeso,
+    gelCatalisadorPeso,
+    gelLote,
+    gelValidade,
+    retrabalho,
+    codigoItem: material.codigoItem,
+    descricaoMaterial: material.descricao,
+    unidadeMaterial: material.unidade,
+    quantidadeConsumida: quantidade,
   }).catch((e) => {
     // eslint-disable-next-line no-console
     console.error("[Smartsheet] Falha ao enviar medição:", e.message);

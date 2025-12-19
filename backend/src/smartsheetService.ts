@@ -49,11 +49,30 @@ async function getSheet(sheetId: string): Promise<SmartsheetSheet> {
 // Importa materiais a partir da planilha de materiais do Smartsheet.
 // Espera colunas com títulos: "Nº do item", "Descrição do item", "Unidade de medida", "Em estoque"
 export async function importarMateriaisDoSmartsheet() {
+  if (!SMARTSHEET_TOKEN) {
+    throw new Error("SMARTSHEET_TOKEN não configurado. Configure no Render.com.");
+  }
+  
   if (!SHEET_MATERIAIS) {
-    throw new Error("SMARTSHEET_SHEET_MATERIAIS não configurada.");
+    throw new Error("SMARTSHEET_SHEET_MATERIAIS não configurada. Configure no Render.com.");
   }
 
-  const sheet = await getSheet(SHEET_MATERIAIS);
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Buscando planilha de materiais: ${SHEET_MATERIAIS}`);
+  let sheet: SmartsheetSheet;
+  try {
+    sheet = await getSheet(SHEET_MATERIAIS);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Planilha encontrada com ${sheet.columns.length} colunas e ${sheet.rows.length} linhas`);
+  } catch (e: any) {
+    // eslint-disable-next-line no-console
+    console.error("[Smartsheet] Erro ao buscar planilha de materiais:", {
+      message: e?.message,
+      response: e?.response?.data,
+      status: e?.response?.status,
+    });
+    throw new Error(`Erro ao acessar planilha do Smartsheet: ${e?.response?.data?.message || e?.message || "Erro desconhecido"}`);
+  }
 
   const colunaCodigo = sheet.columns.find(
     (c) => c.title.toLowerCase().includes("nº do item") || c.title.toLowerCase().includes("n° do item") || c.title.toLowerCase().includes("n do item"),
