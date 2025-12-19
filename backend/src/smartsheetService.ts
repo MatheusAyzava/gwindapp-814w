@@ -176,17 +176,25 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     // Se não estiver configurado, apenas não envia mas não quebra o fluxo principal
     // eslint-disable-next-line no-console
     console.warn(
-      "[Smartsheet] SMARTSHEET_TOKEN ou SMARTSHEET_SHEET_MEDICOES não configurados. Pulo envio de medição.",
+      `[Smartsheet] SMARTSHEET_TOKEN ou SMARTSHEET_SHEET_MEDICOES não configurados. Pulo envio de medição.`,
+      `Token: ${SMARTSHEET_TOKEN ? "OK" : "FALTANDO"}, Sheet ID: ${SHEET_MEDICOES || "FALTANDO"}`,
     );
     return;
   }
 
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Iniciando envio de medição para planilha ${SHEET_MEDICOES}`);
+
   let sheet: SmartsheetSheet;
   try {
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Buscando planilha ${SHEET_MEDICOES}...`);
     sheet = await getSheet(SHEET_MEDICOES);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Planilha encontrada com ${sheet.columns.length} colunas`);
   } catch (e: any) {
     // eslint-disable-next-line no-console
-    console.error("[Smartsheet] Erro ao buscar planilha:", e?.message || e);
+    console.error("[Smartsheet] Erro ao buscar planilha:", e?.response?.data || e?.message || e);
     // Se falhar ao buscar a planilha, não envia mas não quebra o fluxo principal
     return;
   }
@@ -424,13 +432,22 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     cells.push({ columnId: colUnidade.id, value: dados.unidadeMaterial });
   }
 
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Preparando ${cells.length} células para envio`);
+  
   if (cells.length === 0) {
-    // Nada para enviar
+    // eslint-disable-next-line no-console
+    console.warn("[Smartsheet] Nenhuma célula para enviar. Verifique se as colunas foram encontradas na planilha.");
+    // Log das colunas encontradas para debug
+    // eslint-disable-next-line no-console
+    console.log("[Smartsheet] Colunas disponíveis na planilha:", sheet.columns.map(c => c.title).join(", "));
     return;
   }
 
   try {
-    await axios.post(
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Enviando medição para Smartsheet...`);
+    const response = await axios.post(
       `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows`,
       {
         toBottom: true,
@@ -448,10 +465,15 @@ export async function registrarMedicaoNoSmartsheet(dados: {
       },
     );
     // eslint-disable-next-line no-console
-    console.log("[Smartsheet] Medição enviada com sucesso.");
+    console.log(`[Smartsheet] ✅ Medição enviada com sucesso! ID da linha: ${response.data?.result?.[0]?.id || "N/A"}`);
   } catch (e: any) {
     // eslint-disable-next-line no-console
-    console.error("[Smartsheet] Erro ao enviar medição:", e?.response?.data || e?.message || e);
+    console.error("[Smartsheet] ❌ Erro ao enviar medição:", {
+      status: e?.response?.status,
+      statusText: e?.response?.statusText,
+      data: e?.response?.data,
+      message: e?.message,
+    });
     // Não relança o erro para não quebrar o fluxo principal
   }
 }
