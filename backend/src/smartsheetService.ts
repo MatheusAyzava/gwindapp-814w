@@ -281,6 +281,17 @@ export async function registrarMedicaoNoSmartsheet(dados: {
 
   const cells: SmartsheetCell[] = [];
 
+  // Log dos IDs das colunas encontradas para debug
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] IDs das colunas principais:`, {
+    colDia: colDia?.id,
+    colSemana: colSemana?.id,
+    colHoraEntrada: colHoraEntrada?.id,
+    colHoraSaida: colHoraSaida?.id,
+    colCliente: colCliente?.id,
+    colProjeto: colProjeto?.id,
+  });
+
   if (colDia && dados.dia) {
     // Smartsheet espera datas no formato ISO sem horário (YYYY-MM-DD)
     const isoDate =
@@ -288,21 +299,33 @@ export async function registrarMedicaoNoSmartsheet(dados: {
         ? dados.dia
         : dados.dia.toISOString().substring(0, 10);
     cells.push({ columnId: colDia.id, value: isoDate });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula Dia: columnId=${colDia.id}, value=${isoDate}`);
   }
   if (colSemana && dados.semana) {
     cells.push({ columnId: colSemana.id, value: dados.semana });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula Semana: columnId=${colSemana.id}, value=${dados.semana}`);
   }
   if (colHoraEntrada && dados.horaInicio) {
     cells.push({ columnId: colHoraEntrada.id, value: dados.horaInicio });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula Hora Entrada: columnId=${colHoraEntrada.id}, value=${dados.horaInicio}`);
   }
   if (colHoraSaida && dados.horaFim) {
     cells.push({ columnId: colHoraSaida.id, value: dados.horaFim });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula Hora Saída: columnId=${colHoraSaida.id}, value=${dados.horaFim}`);
   }
   if (colCliente && dados.cliente) {
     cells.push({ columnId: colCliente.id, value: dados.cliente });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula Cliente: columnId=${colCliente.id}, value=${dados.cliente}`);
   }
   if (colProjeto) {
     cells.push({ columnId: colProjeto.id, value: dados.projeto });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula Projeto: columnId=${colProjeto.id}, value=${dados.projeto}`);
   }
   if (colEscala && dados.escala) {
     cells.push({ columnId: colEscala.id, value: dados.escala });
@@ -509,13 +532,26 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     return;
   }
 
+  // Verificar se há células duplicadas (mesmo columnId)
+  const columnIds = cells.map(c => c.columnId);
+  const duplicados = columnIds.filter((id, index) => columnIds.indexOf(id) !== index);
+  if (duplicados.length > 0) {
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] ⚠️ ATENÇÃO: Encontradas células com columnId duplicado:`, duplicados);
+  }
+
   // Log detalhado do que está sendo enviado
   // eslint-disable-next-line no-console
-  console.log(`[Smartsheet] Células a serem enviadas:`, JSON.stringify(cells.map(c => ({
+  console.log(`[Smartsheet] Células a serem enviadas (${cells.length} células):`, JSON.stringify(cells.map(c => ({
     columnId: c.columnId,
     value: c.value,
     displayValue: c.displayValue
   })), null, 2));
+  
+  // Log resumido mostrando apenas os columnIds únicos
+  const columnIdsUnicos = [...new Set(columnIds)];
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] ColumnIds únicos encontrados: ${columnIdsUnicos.length} de ${cells.length} células`);
 
   try {
     // eslint-disable-next-line no-console
