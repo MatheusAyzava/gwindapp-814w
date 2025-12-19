@@ -334,13 +334,29 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   // Log dos IDs das colunas encontradas para debug
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] IDs das colunas principais:`, {
-    colDia: colDia?.id,
-    colSemana: colSemana?.id,
-    colHoraEntrada: colHoraEntrada?.id,
-    colHoraSaida: colHoraSaida?.id,
-    colCliente: colCliente?.id,
-    colProjeto: colProjeto?.id,
+    colDia: colDia ? { id: colDia.id, titulo: sheet.columns.find(c => c.id === colDia.id)?.title } : null,
+    colSemana: colSemana ? { id: colSemana.id, titulo: sheet.columns.find(c => c.id === colSemana.id)?.title } : null,
+    colHoraEntrada: colHoraEntrada ? { id: colHoraEntrada.id, titulo: sheet.columns.find(c => c.id === colHoraEntrada.id)?.title } : null,
+    colHoraSaida: colHoraSaida ? { id: colHoraSaida.id, titulo: sheet.columns.find(c => c.id === colHoraSaida.id)?.title } : null,
+    colCliente: colCliente ? { id: colCliente.id, titulo: sheet.columns.find(c => c.id === colCliente.id)?.title } : null,
+    colProjeto: colProjeto ? { id: colProjeto.id, titulo: sheet.columns.find(c => c.id === colProjeto.id)?.title } : null,
   });
+  
+  // Verificar se há colunas duplicadas (mesmo ID) - apenas para as principais
+  const colunasPrincipaisParaVerificacao = [
+    colDia, colSemana, colHoraEntrada, colHoraSaida, colCliente, colProjeto,
+    colEscala, colTecnicoLider, colQtdTec, colNomesTec, colSupervisor
+  ].filter(c => c !== null && c !== undefined) as Array<{ id: number; title: string }>;
+  
+  const idsColunasPrincipais = colunasPrincipaisParaVerificacao.map(c => c.id);
+  const idsUnicosPrincipais = [...new Set(idsColunasPrincipais)];
+  
+  if (idsUnicosPrincipais.length < idsColunasPrincipais.length) {
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] ⚠️ ATENÇÃO: Algumas colunas principais têm o mesmo ID!`);
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] IDs únicos: ${idsUnicosPrincipais.length}, Total de colunas: ${idsColunasPrincipais.length}`);
+  }
 
   if (colDia && dados.dia) {
     // Smartsheet espera datas no formato ISO sem horário (YYYY-MM-DD)
