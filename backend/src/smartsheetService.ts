@@ -225,6 +225,37 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] Colunas disponíveis na planilha:`, sheet.columns.map(c => c.title).join(", "));
 
+  // Buscar coluna chatId para gerar novo ID sequencial
+  const colChatId = findCol((t) => t.includes("chatid") || t.includes("chat id") || t === "chatid");
+  
+  // Gerar novo chatId sequencial baseado no último ID da planilha
+  let novoChatId = "ID1";
+  if (colChatId && sheet.rows.length > 0) {
+    // Buscar o maior ID existente
+    const idsExistentes = sheet.rows
+      .map((row) => {
+        const cell = row.cells.find((c) => c.columnId === colChatId.id);
+        const valor = cell?.value || cell?.displayValue || "";
+        // Extrair número do ID (ex: "ID91" -> 91)
+        const match = String(valor).match(/ID(\d+)/i) || String(valor).match(/(\d+)/);
+        return match ? parseInt(match[1], 10) : 0;
+      })
+      .filter((id) => id > 0);
+    
+    const ultimoId = idsExistentes.length > 0 ? Math.max(...idsExistentes) : 0;
+    novoChatId = `ID${ultimoId + 1}`;
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Último chatId encontrado: ID${ultimoId}, Novo chatId gerado: ${novoChatId}`);
+  } else if (colChatId) {
+    // Se a coluna existe mas não há linhas, começar do ID1
+    novoChatId = "ID1";
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Nenhuma linha existente, usando chatId inicial: ${novoChatId}`);
+  } else {
+    // eslint-disable-next-line no-console
+    console.warn(`[Smartsheet] Coluna chatId não encontrada. Não será enviado chatId.`);
+  }
+
   // Mapear todas as colunas possíveis do Smartsheet
   const colDia = findCol((t) => t.startsWith("dia") || t.includes("data"));
   const colSemana = findCol((t) => t.startsWith("sema") || t.includes("semana"));
@@ -280,6 +311,13 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   const colUnidade = findCol((t) => t.includes("unidade") || t.includes("unid") || t === "unid.");
 
   const cells: SmartsheetCell[] = [];
+
+  // Adicionar chatId primeiro (se a coluna existir)
+  if (colChatId) {
+    cells.push({ columnId: colChatId.id, value: novoChatId });
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula chatId: columnId=${colChatId.id}, value=${novoChatId}`);
+  }
 
   // Log dos IDs das colunas encontradas para debug
   // eslint-disable-next-line no-console
