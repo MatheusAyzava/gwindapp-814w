@@ -230,11 +230,20 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     return;
   }
 
-  const findCol = (matcher: (title: string) => boolean) => {
-    const found = sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+  // Array para rastrear colunas já encontradas e evitar duplicatas
+  const colunasJaUsadas = new Set<number>();
+  
+  const findCol = (matcher: (title: string) => boolean, nomeColuna?: string) => {
+    const found = sheet.columns.find((c) => 
+      !colunasJaUsadas.has(c.id) && matcher(c.title.toLowerCase())
+    );
     if (found) {
+      colunasJaUsadas.add(found.id);
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] Coluna encontrada: "${found.title}" (ID: ${found.id})`);
+      console.log(`[Smartsheet] Coluna encontrada${nomeColuna ? ` (${nomeColuna})` : ""}: "${found.title}" (ID: ${found.id})`);
+    } else {
+      // eslint-disable-next-line no-console
+      console.warn(`[Smartsheet] Coluna NÃO encontrada${nomeColuna ? ` (${nomeColuna})` : ""}: nenhuma coluna corresponde ao padrão`);
     }
     return found;
   };
@@ -244,7 +253,7 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   console.log(`[Smartsheet] Colunas disponíveis na planilha:`, sheet.columns.map(c => c.title).join(", "));
 
   // Buscar coluna chatId para gerar novo ID sequencial
-  const colChatId = findCol((t) => t.includes("chatid") || t.includes("chat id") || t === "chatid");
+  const colChatId = findCol((t) => t.includes("chatid") || t.includes("chat id") || t === "chatid", "chatId");
   
   // Gerar novo chatId sequencial baseado no último ID da planilha
   let novoChatId = "ID1";
@@ -275,17 +284,19 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   }
 
   // Mapear todas as colunas possíveis do Smartsheet
-  const colDia = findCol((t) => t.startsWith("dia") || t.includes("data"));
-  const colSemana = findCol((t) => t.startsWith("sema") || t.includes("semana"));
-  const colHoraEntrada = findCol((t) => t.includes("hora de entr") || t.includes("hora início") || t.includes("hora inicio"));
-  const colHoraSaida = findCol((t) => t.includes("hora de sa") || t.includes("hora fim") || t.includes("hora de saída"));
-  const colCliente = findCol((t) => t === "cliente" || t.includes("cliente"));
-  const colProjeto = findCol((t) => t === "projeto" || t.includes("projeto"));
-  const colEscala = findCol((t) => t === "escala" || t.includes("escala"));
-  const colTecnicoLider = findCol((t) => t.includes("técnico líder") || t.includes("tecnico lider") || t.includes("líder"));
-  const colQtdTec = findCol((t) => (t.includes("qt") || t.includes("qtd")) && (t.includes("tec") || t.includes("téc")));
-  const colNomesTec = findCol((t) => t.includes("nome dos técnicos") || t.includes("nomes técnicos") || t.includes("técnicos"));
-  const colSupervisor = findCol((t) => t.includes("supervisor"));
+  // IMPORTANTE: Buscar de forma mais específica, priorizando match exato
+  const colDia = findCol((t) => t === "dia", "Dia") || findCol((t) => t.startsWith("dia") && !t.includes("data"), "Dia (fallback)");
+  const colData = findCol((t) => t === "data", "Data") || findCol((t) => t.includes("data") && !t.includes("dia"), "Data (fallback)");
+  const colSemana = findCol((t) => t === "semana", "Semana") || findCol((t) => t.startsWith("sema"), "Semana (fallback)");
+  const colHoraEntrada = findCol((t) => t.includes("hora de entr"), "Hora Entrada") || findCol((t) => t.includes("hora início"), "Hora Entrada (fallback)") || findCol((t) => t.includes("hora") && t.includes("inicio") && !t.includes("saida"), "Hora Entrada (fallback 2)");
+  const colHoraSaida = findCol((t) => t.includes("hora de sa"), "Hora Saída") || findCol((t) => t.includes("hora fim"), "Hora Saída (fallback)") || findCol((t) => t.includes("hora") && (t.includes("saida") || t.includes("fim")), "Hora Saída (fallback 2)");
+  const colCliente = findCol((t) => t === "cliente", "Cliente");
+  const colProjeto = findCol((t) => t === "projeto", "Projeto");
+  const colEscala = findCol((t) => t === "escala", "Escala") || findCol((t) => t.includes("escala"), "Escala (fallback)");
+  const colTecnicoLider = findCol((t) => t.includes("técnico líder"), "Técnico Líder") || findCol((t) => t.includes("tecnico lider"), "Técnico Líder (fallback)") || findCol((t) => t.includes("líder"), "Técnico Líder (fallback 2)");
+  const colQtdTec = findCol((t) => (t.includes("qt") || t.includes("qtd")) && (t.includes("tec") || t.includes("téc")), "Qtd Técnicos");
+  const colNomesTec = findCol((t) => t.includes("nome dos técnicos"), "Nomes Técnicos") || findCol((t) => t.includes("nomes técnicos"), "Nomes Técnicos (fallback)") || findCol((t) => t.includes("técnicos"), "Nomes Técnicos (fallback 2)");
+  const colSupervisor = findCol((t) => t.includes("supervisor"), "Supervisor");
   const colTipoIntervalo = findCol((t) => t.includes("tipo de intervalo") || t.includes("tipo intervalo") || t.includes("intervalo"));
   const colTipoAcesso = findCol((t) => t.includes("tipo de acesso") || t.includes("tipo acesso") || t.includes("acesso"));
   const colPa = findCol((t) => t === "pá" || t === "pa" || t.includes("pá"));
@@ -337,10 +348,13 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     console.log(`[Smartsheet] Adicionando célula chatId: columnId=${colChatId.id}, value=${novoChatId}`);
   }
 
+  // Usar colData se existir, senão usar colDia (para uso nos logs e células)
+  const colDataOuDia = colData || colDia;
+  
   // Log dos IDs das colunas encontradas para debug
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] IDs das colunas principais:`, {
-    colDia: colDia ? { id: colDia.id, titulo: sheet.columns.find(c => c.id === colDia.id)?.title } : null,
+    colDataOuDia: colDataOuDia ? { id: colDataOuDia.id, titulo: sheet.columns.find(c => c.id === colDataOuDia.id)?.title } : null,
     colSemana: colSemana ? { id: colSemana.id, titulo: sheet.columns.find(c => c.id === colSemana.id)?.title } : null,
     colHoraEntrada: colHoraEntrada ? { id: colHoraEntrada.id, titulo: sheet.columns.find(c => c.id === colHoraEntrada.id)?.title } : null,
     colHoraSaida: colHoraSaida ? { id: colHoraSaida.id, titulo: sheet.columns.find(c => c.id === colHoraSaida.id)?.title } : null,
@@ -348,9 +362,12 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     colProjeto: colProjeto ? { id: colProjeto.id, titulo: sheet.columns.find(c => c.id === colProjeto.id)?.title } : null,
   });
   
+  // Usar colData se existir, senão usar colDia
+  const colDataOuDia = colData || colDia;
+  
   // Verificar se há colunas duplicadas (mesmo ID) - apenas para as principais
   const colunasPrincipaisParaVerificacao = [
-    colDia, colSemana, colHoraEntrada, colHoraSaida, colCliente, colProjeto,
+    colDataOuDia, colSemana, colHoraEntrada, colHoraSaida, colCliente, colProjeto,
     colEscala, colTecnicoLider, colQtdTec, colNomesTec, colSupervisor
   ].filter(c => c !== null && c !== undefined) as Array<{ id: number; title: string }>;
   
@@ -364,15 +381,15 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     console.error(`[Smartsheet] IDs únicos: ${idsUnicosPrincipais.length}, Total de colunas: ${idsColunasPrincipais.length}`);
   }
 
-  if (colDia && dados.dia) {
+  if (colDataOuDia && dados.dia) {
     // Smartsheet espera datas no formato ISO sem horário (YYYY-MM-DD)
     const isoDate =
       typeof dados.dia === "string"
         ? dados.dia
         : dados.dia.toISOString().substring(0, 10);
-    cells.push({ columnId: colDia.id, value: isoDate });
+    cells.push({ columnId: colDataOuDia.id, value: isoDate });
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula Dia: columnId=${colDia.id}, value=${isoDate}`);
+    console.log(`[Smartsheet] Adicionando célula ${colData ? "Data" : "Dia"}: columnId=${colDataOuDia.id}, value=${isoDate}`);
   }
   if (colSemana && dados.semana) {
     cells.push({ columnId: colSemana.id, value: dados.semana });
