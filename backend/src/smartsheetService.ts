@@ -572,10 +572,25 @@ export async function registrarMedicaoNoSmartsheet(dados: {
 
   // Verificar se há células duplicadas (mesmo columnId)
   const columnIds = cells.map(c => c.columnId);
+  const columnIdsUnicos = [...new Set(columnIds)];
   const duplicados = columnIds.filter((id, index) => columnIds.indexOf(id) !== index);
+  
+  // Verificação crítica: se todas as células têm o mesmo ID, há um problema grave
+  if (columnIdsUnicos.length === 1 && cells.length > 1) {
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] ❌ ERRO CRÍTICO: Todas as ${cells.length} células têm o mesmo columnId (${columnIdsUnicos[0]})!`);
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] Isso significa que todas as colunas encontradas apontam para a mesma coluna na planilha.`);
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] Detalhes das células:`, cells.map((c, i) => `Célula ${i}: columnId=${c.columnId}, value=${c.value}`).join("\n"));
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] ❌ CANCELANDO ENVIO: Dados não serão enviados pois estão incorretos.`);
+    return; // Não enviar dados incorretos
+  }
+  
   if (duplicados.length > 0) {
     // eslint-disable-next-line no-console
-    console.error(`[Smartsheet] ⚠️ ATENÇÃO: Encontradas células com columnId duplicado:`, duplicados);
+    console.warn(`[Smartsheet] ⚠️ ATENÇÃO: Encontradas células com columnId duplicado:`, duplicados);
   }
 
   // Log detalhado do que está sendo enviado
@@ -586,8 +601,7 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     displayValue: c.displayValue
   })), null, 2));
   
-  // Log resumido mostrando apenas os columnIds únicos
-  const columnIdsUnicos = [...new Set(columnIds)];
+  // Log resumido mostrando apenas os columnIds únicos (já declarado acima)
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] ColumnIds únicos encontrados: ${columnIdsUnicos.length} de ${cells.length} células`);
 
