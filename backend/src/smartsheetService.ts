@@ -455,22 +455,49 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     cells.push({ columnId: colUnidade.id, value: dados.unidadeMaterial });
   }
 
-  // Log das colunas encontradas
-  const colunasEncontradas: string[] = [];
-  if (colDia) colunasEncontradas.push("Dia");
-  if (colSemana) colunasEncontradas.push("Semana");
-  if (colHoraEntrada) colunasEncontradas.push("Hora Entrada");
-  if (colHoraSaida) colunasEncontradas.push("Hora Saída");
-  if (colCliente) colunasEncontradas.push("Cliente");
-  if (colProjeto) colunasEncontradas.push("Projeto");
-  if (colEscala) colunasEncontradas.push("Escala");
-  if (colTecnicoLider) colunasEncontradas.push("Técnico Líder");
-  if (colQtdTec) colunasEncontradas.push("Qtd Técnicos");
-  if (colNomesTec) colunasEncontradas.push("Nomes Técnicos");
-  if (colSupervisor) colunasEncontradas.push("Supervisor");
+  // Log detalhado das colunas encontradas e não encontradas
+  const colunasEncontradas: Array<{nome: string, id: number, tituloOriginal: string}> = [];
+  const colunasNaoEncontradas: string[] = [];
+  
+  if (colDia) colunasEncontradas.push({nome: "Dia", id: colDia.id, tituloOriginal: sheet.columns.find(c => c.id === colDia.id)?.title || ""});
+  else colunasNaoEncontradas.push("Dia");
+  
+  if (colSemana) colunasEncontradas.push({nome: "Semana", id: colSemana.id, tituloOriginal: sheet.columns.find(c => c.id === colSemana.id)?.title || ""});
+  else colunasNaoEncontradas.push("Semana");
+  
+  if (colHoraEntrada) colunasEncontradas.push({nome: "Hora Entrada", id: colHoraEntrada.id, tituloOriginal: sheet.columns.find(c => c.id === colHoraEntrada.id)?.title || ""});
+  else colunasNaoEncontradas.push("Hora Entrada");
+  
+  if (colHoraSaida) colunasEncontradas.push({nome: "Hora Saída", id: colHoraSaida.id, tituloOriginal: sheet.columns.find(c => c.id === colHoraSaida.id)?.title || ""});
+  else colunasNaoEncontradas.push("Hora Saída");
+  
+  if (colCliente) colunasEncontradas.push({nome: "Cliente", id: colCliente.id, tituloOriginal: sheet.columns.find(c => c.id === colCliente.id)?.title || ""});
+  else colunasNaoEncontradas.push("Cliente");
+  
+  if (colProjeto) colunasEncontradas.push({nome: "Projeto", id: colProjeto.id, tituloOriginal: sheet.columns.find(c => c.id === colProjeto.id)?.title || ""});
+  else colunasNaoEncontradas.push("Projeto");
+  
+  if (colEscala) colunasEncontradas.push({nome: "Escala", id: colEscala.id, tituloOriginal: sheet.columns.find(c => c.id === colEscala.id)?.title || ""});
+  else colunasNaoEncontradas.push("Escala");
+  
+  if (colTecnicoLider) colunasEncontradas.push({nome: "Técnico Líder", id: colTecnicoLider.id, tituloOriginal: sheet.columns.find(c => c.id === colTecnicoLider.id)?.title || ""});
+  else colunasNaoEncontradas.push("Técnico Líder");
+  
+  if (colQtdTec) colunasEncontradas.push({nome: "Qtd Técnicos", id: colQtdTec.id, tituloOriginal: sheet.columns.find(c => c.id === colQtdTec.id)?.title || ""});
+  else colunasNaoEncontradas.push("Qtd Técnicos");
+  
+  if (colNomesTec) colunasEncontradas.push({nome: "Nomes Técnicos", id: colNomesTec.id, tituloOriginal: sheet.columns.find(c => c.id === colNomesTec.id)?.title || ""});
+  else colunasNaoEncontradas.push("Nomes Técnicos");
+  
+  if (colSupervisor) colunasEncontradas.push({nome: "Supervisor", id: colSupervisor.id, tituloOriginal: sheet.columns.find(c => c.id === colSupervisor.id)?.title || ""});
+  else colunasNaoEncontradas.push("Supervisor");
   
   // eslint-disable-next-line no-console
-  console.log(`[Smartsheet] Colunas encontradas: ${colunasEncontradas.length > 0 ? colunasEncontradas.join(", ") : "NENHUMA"}`);
+  console.log(`[Smartsheet] ✅ Colunas encontradas (${colunasEncontradas.length}):`, colunasEncontradas.map(c => `${c.nome} (ID: ${c.id}, Título: "${c.tituloOriginal}")`).join(", "));
+  if (colunasNaoEncontradas.length > 0) {
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ⚠️ Colunas NÃO encontradas (${colunasNaoEncontradas.length}):`, colunasNaoEncontradas.join(", "));
+  }
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] Preparando ${cells.length} células para envio`);
   
@@ -482,19 +509,31 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     return;
   }
 
+  // Log detalhado do que está sendo enviado
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Células a serem enviadas:`, JSON.stringify(cells.map(c => ({
+    columnId: c.columnId,
+    value: c.value,
+    displayValue: c.displayValue
+  })), null, 2));
+
   try {
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Enviando medição para Smartsheet...`);
+    const payload = {
+      toBottom: true,
+      rows: [
+        {
+          cells,
+        },
+      ],
+    };
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Payload completo:`, JSON.stringify(payload, null, 2));
+    
     const response = await axios.post(
       `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows`,
-      {
-        toBottom: true,
-        rows: [
-          {
-            cells,
-          },
-        ],
-      },
+      payload,
       {
         headers: {
           Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
@@ -502,8 +541,13 @@ export async function registrarMedicaoNoSmartsheet(dados: {
         },
       },
     );
+    
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] ✅ Medição enviada com sucesso! ID da linha: ${response.data?.result?.[0]?.id || "N/A"}`);
+    console.log(`[Smartsheet] Resposta completa da API:`, JSON.stringify(response.data, null, 2));
+    
+    const rowId = response.data?.result?.[0]?.id || response.data?.result?.[0]?.rowNumber || response.data?.id || "N/A";
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ✅ Medição enviada com sucesso! ID da linha: ${rowId}`);
   } catch (e: any) {
     // eslint-disable-next-line no-console
     console.error("[Smartsheet] ❌ Erro ao enviar medição:", {
