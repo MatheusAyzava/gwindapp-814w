@@ -230,8 +230,14 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     return;
   }
 
-  const findCol = (matcher: (title: string) => boolean) =>
-    sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+  const findCol = (matcher: (title: string) => boolean) => {
+    const found = sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+    if (found) {
+      // eslint-disable-next-line no-console
+      console.log(`[Smartsheet] Coluna encontrada: "${found.title}" (ID: ${found.id})`);
+    }
+    return found;
+  };
 
   // Log das colunas disponíveis para debug
   // eslint-disable-next-line no-console
@@ -613,7 +619,15 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     console.error(`[Smartsheet] Detalhes das células:`, cells.map((c, i) => `Célula ${i}: columnId=${c.columnId}, value=${c.value}`).join("\n"));
     // eslint-disable-next-line no-console
     console.error(`[Smartsheet] ❌ CANCELANDO ENVIO: Dados não serão enviados pois estão incorretos.`);
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] PROBLEMA: A função findCol está retornando sempre a mesma coluna. Verifique os nomes das colunas no Smartsheet.`);
     return; // Não enviar dados incorretos
+  }
+  
+  // Verificação adicional: se temos menos de 3 columnIds únicos, pode ser um problema
+  if (columnIdsUnicos.length < 3 && cells.length >= 3) {
+    // eslint-disable-next-line no-console
+    console.warn(`[Smartsheet] ⚠️ ATENÇÃO: Apenas ${columnIdsUnicos.length} columnIds únicos para ${cells.length} células. Isso pode indicar um problema.`);
   }
   
   if (duplicados.length > 0) {
@@ -632,6 +646,15 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   // Log resumido mostrando apenas os columnIds únicos (já declarado acima)
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] ColumnIds únicos encontrados: ${columnIdsUnicos.length} de ${cells.length} células`);
+  
+  // Verificação final antes de enviar
+  if (columnIdsUnicos.length < 2) {
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] ❌ ERRO: Apenas ${columnIdsUnicos.length} columnId(s) único(s) para ${cells.length} células.`);
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] ❌ CANCELANDO ENVIO: Não é possível criar uma linha com apenas uma coluna preenchida.`);
+    return;
+  }
 
   try {
     // eslint-disable-next-line no-console
