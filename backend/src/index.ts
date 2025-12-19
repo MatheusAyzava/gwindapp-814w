@@ -289,8 +289,17 @@ app.post("/materiais/import", async (req, res) => {
   }
 });
 
-// Importar materiais a partir do Smartsheet
+// Importar materiais a partir do Smartsheet (OPCIONAL - só funciona se SMARTSHEET_SHEET_MATERIAIS estiver configurado)
 app.post("/materiais/import-smartsheet", async (_req, res) => {
+  // Verificar se a funcionalidade está configurada
+  if (!process.env.SMARTSHEET_SHEET_MATERIAIS) {
+    return res.status(400).json({ 
+      error: "Funcionalidade não configurada.",
+      mensagem: "A importação de materiais do Smartsheet não está configurada. Esta funcionalidade é opcional.",
+      dica: "Se você quiser usar esta funcionalidade, configure SMARTSHEET_SHEET_MATERIAIS no Render.com",
+    });
+  }
+
   try {
     // eslint-disable-next-line no-console
     console.log("[Smartsheet] Iniciando importação de materiais...");
