@@ -221,6 +221,10 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   const findCol = (matcher: (title: string) => boolean) =>
     sheet.columns.find((c) => matcher(c.title.toLowerCase()));
 
+  // Log das colunas disponíveis para debug
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Colunas disponíveis na planilha:`, sheet.columns.map(c => c.title).join(", "));
+
   // Mapear todas as colunas possíveis do Smartsheet
   const colDia = findCol((t) => t.startsWith("dia") || t.includes("data"));
   const colSemana = findCol((t) => t.startsWith("sema") || t.includes("semana"));
@@ -451,15 +455,30 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     cells.push({ columnId: colUnidade.id, value: dados.unidadeMaterial });
   }
 
+  // Log das colunas encontradas
+  const colunasEncontradas: string[] = [];
+  if (colDia) colunasEncontradas.push("Dia");
+  if (colSemana) colunasEncontradas.push("Semana");
+  if (colHoraEntrada) colunasEncontradas.push("Hora Entrada");
+  if (colHoraSaida) colunasEncontradas.push("Hora Saída");
+  if (colCliente) colunasEncontradas.push("Cliente");
+  if (colProjeto) colunasEncontradas.push("Projeto");
+  if (colEscala) colunasEncontradas.push("Escala");
+  if (colTecnicoLider) colunasEncontradas.push("Técnico Líder");
+  if (colQtdTec) colunasEncontradas.push("Qtd Técnicos");
+  if (colNomesTec) colunasEncontradas.push("Nomes Técnicos");
+  if (colSupervisor) colunasEncontradas.push("Supervisor");
+  
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Colunas encontradas: ${colunasEncontradas.length > 0 ? colunasEncontradas.join(", ") : "NENHUMA"}`);
   // eslint-disable-next-line no-console
   console.log(`[Smartsheet] Preparando ${cells.length} células para envio`);
   
   if (cells.length === 0) {
     // eslint-disable-next-line no-console
-    console.warn("[Smartsheet] Nenhuma célula para enviar. Verifique se as colunas foram encontradas na planilha.");
-    // Log das colunas encontradas para debug
+    console.warn("[Smartsheet] ⚠️ Nenhuma célula para enviar. Verifique se as colunas foram encontradas na planilha.");
     // eslint-disable-next-line no-console
-    console.log("[Smartsheet] Colunas disponíveis na planilha:", sheet.columns.map(c => c.title).join(", "));
+    console.log("[Smartsheet] Dados recebidos:", JSON.stringify(dados, null, 2));
     return;
   }
 

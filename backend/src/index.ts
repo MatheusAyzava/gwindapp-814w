@@ -703,6 +703,8 @@ app.post("/medicoes", async (req, res) => {
   });
 
   // Envia a medição para o Smartsheet de forma assíncrona, sem bloquear a resposta
+  // eslint-disable-next-line no-console
+  console.log("[Medicao] Medição registrada no banco. Iniciando envio para Smartsheet...");
   registrarMedicaoNoSmartsheet({
     dia: dia ? new Date(dia) : null,
     semana,
