@@ -871,4 +871,14 @@ conectarBancoComTimeout(15000)
   .then(() => console.log("✅ Conexão com banco OK"))
   .catch((e) => console.error("❌ Falha ao conectar no banco:", (e as any)?.message));
 
+// Iniciar servidor (DEPOIS de registrar todas as rotas!)
+app.listen(PORT, () => {
+  // eslint-disable-next-line no-console
+  console.log(`Backend rodando na porta ${PORT}`);
+}).on('error', (err: any) => {
+  // eslint-disable-next-line no-console
+  console.error('Erro ao iniciar servidor:', err);
+  process.exit(1);
+});
+
 
