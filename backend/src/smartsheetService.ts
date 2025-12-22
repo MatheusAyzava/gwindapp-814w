@@ -342,21 +342,26 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   const cells: SmartsheetCell[] = [];
 
   // Adicionar chatId primeiro (se a coluna existir)
-  // Função auxiliar para adicionar células - usar displayValue para strings para garantir que apareçam
+  // Função auxiliar para adicionar células
+  // IMPORTANTE: Smartsheet aceita apenas 'value' para a maioria dos tipos
+  // 'displayValue' é usado apenas para fórmulas ou valores calculados
   const addCell = (columnId: number, value: string | number | boolean | null | undefined, logName: string) => {
     if (value === null || value === undefined || value === "") return;
     const cell: any = { columnId };
+    
+    // Para strings, usar apenas 'value' - Smartsheet aceita strings diretamente
     if (typeof value === "string") {
       cell.value = value;
-      cell.displayValue = value; // IMPORTANTE: displayValue garante que texto apareça
+      // NÃO usar displayValue para strings simples - pode causar problemas
     } else if (typeof value === "number") {
       cell.value = value;
     } else if (typeof value === "boolean") {
       cell.value = value;
     }
+    
     cells.push(cell);
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula ${logName}: columnId=${columnId}, value=${value}, type=${typeof value}, hasDisplayValue=${!!cell.displayValue}`);
+    console.log(`[Smartsheet] Adicionando célula ${logName}: columnId=${columnId}, value=${value}, type=${typeof value}`);
   };
 
   // Usar colData se existir, senão usar colDia (para uso nos logs e células)
