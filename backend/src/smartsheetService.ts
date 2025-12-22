@@ -738,44 +738,61 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Payload de atualização:`, JSON.stringify(updatePayload, null, 2));
     
-    const updateResponse = await axios.put(
-      `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows/${rowId}`,
-      updatePayload,
-      {
-        headers: {
-          Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
-          "Content-Type": "application/json",
-        },
-      },
-    );
+    // Tentar atualizar em lotes menores (máximo 50 células por vez)
+    const TAMANHO_LOTE = 50;
+    let totalAtualizadas = 0;
     
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Resposta da atualização (status ${updateResponse.status}):`, {
-      status: updateResponse.status,
-      message: updateResponse.data?.message,
-      resultCode: updateResponse.data?.resultCode,
-      rowId: updateResponse.data?.result?.id,
-      rowNumber: updateResponse.data?.result?.rowNumber,
-      cellsAtualizadas: updateResponse.data?.result?.cells?.length || 0,
-    });
-    
-    // Verificar se as células foram atualizadas
-    const cellsNaResposta = updateResponse.data?.result?.cells || [];
-    const cellsComValor = cellsNaResposta.filter((c: any) => c.value !== null && c.value !== undefined && c.value !== "");
-    
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Células na resposta: ${cellsNaResposta.length}, Células com valor: ${cellsComValor.length}`);
-    
-    if (cellsComValor.length > 0) {
+    for (let i = 0; i < cellsParaAtualizar.length; i += TAMANHO_LOTE) {
+      const lote = cellsParaAtualizar.slice(i, i + TAMANHO_LOTE);
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Linha ${rowNumber} criada e ${cellsComValor.length} células atualizadas.`);
+      console.log(`[Smartsheet] Atualizando lote ${Math.floor(i / TAMANHO_LOTE) + 1} (${lote.length} células)...`);
+      
+      try {
+        const updateResponse = await axios.put(
+          `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows/${rowId}`,
+          { cells: lote },
+          {
+            headers: {
+              Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
+              "Content-Type": "application/json",
+            },
+          },
+        );
+        
+        const cellsNaResposta = updateResponse.data?.result?.cells || [];
+        const cellsComValor = cellsNaResposta.filter((c: any) => c.value !== null && c.value !== undefined && c.value !== "");
+        
+        // eslint-disable-next-line no-console
+        console.log(`[Smartsheet] Lote ${Math.floor(i / TAMANHO_LOTE) + 1}: ${cellsComValor.length} células com valor na resposta`);
+        totalAtualizadas += cellsComValor.length;
+        
+        // Pequeno delay entre lotes para evitar rate limiting
+        if (i + TAMANHO_LOTE < cellsParaAtualizar.length) {
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+      } catch (error: any) {
+        // eslint-disable-next-line no-console
+        console.error(`[Smartsheet] ❌ Erro ao atualizar lote ${Math.floor(i / TAMANHO_LOTE) + 1}:`, {
+          status: error?.response?.status,
+          message: error?.response?.data?.message || error?.message,
+          data: error?.response?.data,
+        });
+        // Continua tentando os próximos lotes mesmo se um falhar
+      }
+    }
+    
+    // Verificar resultado final
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ✅ Total de células atualizadas: ${totalAtualizadas} de ${cellsParaAtualizar.length}`);
+    
+    if (totalAtualizadas > 0) {
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ Primeiras células atualizadas:`, cellsComValor.slice(0, 5).map((c: any) => `columnId=${c.columnId}, value=${c.value}`));
+      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Linha ${rowNumber} criada e ${totalAtualizadas} células atualizadas.`);
     } else {
       // eslint-disable-next-line no-console
       console.error(`[Smartsheet] ⚠️ ATENÇÃO: Linha criada mas nenhuma célula foi atualizada com valor!`);
       // eslint-disable-next-line no-console
-      console.error(`[Smartsheet] Verifique se os tipos de dados estão corretos.`);
+      console.error(`[Smartsheet] Verifique se os tipos de dados estão corretos ou se há problemas de permissão na planilha.`);
     }
   } catch (e: any) {
     // eslint-disable-next-line no-console
