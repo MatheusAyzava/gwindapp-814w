@@ -830,6 +830,51 @@ app.listen(PORT, () => {
   process.exit(1);
 });
 
+// Endpoint de diagnóstico do Smartsheet
+app.get("/smartsheet/status", async (_req, res) => {
+  const status = {
+    tokenConfigurado: !!process.env.SMARTSHEET_TOKEN,
+    sheetMedicoesConfigurado: !!process.env.SMARTSHEET_SHEET_MEDICOES,
+    sheetMateriaisConfigurado: !!process.env.SMARTSHEET_SHEET_MATERIAIS,
+    tokenValido: false,
+    sheetMedicoesAcessivel: false,
+    erro: null as string | null,
+  };
+
+  if (status.tokenConfigurado && status.sheetMedicoesConfigurado) {
+    try {
+      // Tentar buscar a planilha para verificar se está tudo OK
+      const axios = require("axios");
+      const response = await axios.get(
+        `https://api.smartsheet.com/2.0/sheets/${process.env.SMARTSHEET_SHEET_MEDICOES}`,
+        {
+          headers: {
+            Authorization: `Bearer ${process.env.SMARTSHEET_TOKEN}`,
+          },
+          timeout: 10000,
+        },
+      );
+      status.tokenValido = true;
+      status.sheetMedicoesAcessivel = true;
+      status.erro = null;
+    } catch (e: any) {
+      status.tokenValido = false;
+      status.sheetMedicoesAcessivel = false;
+      if (e?.response?.status === 401) {
+        status.erro = "Token inválido ou expirado. Gere um novo token no Smartsheet.";
+      } else if (e?.response?.status === 404) {
+        status.erro = "Sheet ID não encontrado. Verifique se o ID da planilha está correto.";
+      } else {
+        status.erro = e?.message || "Erro ao conectar com Smartsheet";
+      }
+    }
+  } else {
+    status.erro = "Variáveis de ambiente não configuradas. Configure SMARTSHEET_TOKEN e SMARTSHEET_SHEET_MEDICOES no Render.";
+  }
+
+  res.json(status);
+});
+
 // Conectar ao banco no startup (sem derrubar o servidor se falhar, mas logando claramente)
 conectarBancoComTimeout(15000)
   .then(() => console.log("✅ Conexão com banco OK"))
