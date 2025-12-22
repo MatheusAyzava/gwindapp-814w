@@ -9,6 +9,10 @@ import {
   importarMateriaisDoSmartsheet,
   registrarMedicaoNoSmartsheet,
 } from "./smartsheetService";
+import {
+  uploadImagemParaSupabase,
+  salvarUrlImagemNoSmartsheet,
+} from "./imageService";
 
 const app = express();
 const prisma = new PrismaClient();
@@ -64,6 +68,38 @@ app.get("/health/db", async (_req, res) => {
   } catch (e: any) {
     console.error("[DB] Healthcheck falhou:", e?.message);
     res.status(503).json({ status: "ok", db: "erro", detalhes: e?.message });
+  }
+});
+
+// Upload de imagens para checklist
+app.post("/upload/imagem", async (req, res) => {
+  try {
+    const { base64Image, fileName, folder } = req.body;
+
+    if (!base64Image || !fileName) {
+      return res.status(400).json({ error: "base64Image e fileName são obrigatórios" });
+    }
+
+    // Opção 1: Upload para Supabase (recomendado)
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      const imageUrl = await uploadImagemParaSupabase(
+        base64Image,
+        fileName,
+        folder || "checklist"
+      );
+      return res.json({ url: imageUrl, metodo: "supabase" });
+    }
+
+    // Opção 2: Retornar Base64 (para salvar diretamente no Smartsheet)
+    // Útil se não tiver Supabase configurado
+    return res.json({
+      base64: base64Image,
+      metodo: "base64",
+      aviso: "Supabase não configurado. Use Base64 diretamente no Smartsheet (limitado).",
+    });
+  } catch (e: any) {
+    console.error("[Upload] Erro ao fazer upload de imagem:", e?.message);
+    res.status(500).json({ error: "Erro ao fazer upload de imagem", detalhes: e?.message });
   }
 });
 
@@ -553,8 +589,9 @@ app.post("/materiais/import-excel", upload.single("arquivo"), async (req, res) =
 // Registrar medição/consumo de material
 app.post("/medicoes", async (req, res) => {
   const {
-    codigoItem,
-    quantidadeConsumida,
+    consumos, // Novo formato: array de consumos
+    codigoItem, // Formato antigo (compatibilidade)
+    quantidadeConsumida, // Formato antigo (compatibilidade)
     projeto,
     torre,
     usuarioId,
@@ -608,103 +645,130 @@ app.post("/medicoes", async (req, res) => {
     retrabalho,
   } = req.body;
 
-  if (!codigoItem || !quantidadeConsumida || !projeto) {
-    return res.status(400).json({ error: "Dados da medição incompletos." });
+  // Suportar ambos os formatos: novo (array de consumos) e antigo (um consumo)
+  let consumosParaProcessar: Array<{ codigoItem: string; quantidadeConsumida: number }>;
+  
+  if (consumos && Array.isArray(consumos) && consumos.length > 0) {
+    // Novo formato: array de consumos
+    consumosParaProcessar = consumos;
+  } else if (codigoItem && quantidadeConsumida) {
+    // Formato antigo: um único consumo (compatibilidade)
+    consumosParaProcessar = [{ codigoItem, quantidadeConsumida: Number(quantidadeConsumida) }];
+  } else {
+    return res.status(400).json({ error: "Dados da medição incompletos. Envie 'consumos' (array) ou 'codigoItem' + 'quantidadeConsumida'." });
   }
 
-  // Buscar material considerando projeto (o mesmo item pode existir em projetos diferentes)
-  // Regra:
-  // 1) tenta por (codigoItem + codigoProjeto == projeto)
-  // 2) fallback: (codigoItem + codigoProjeto == null)
-  // 3) fallback: primeiro por codigoItem (compatibilidade)
-  const material =
-    (await prisma.material.findFirst({
-      where: { codigoItem, codigoProjeto: projeto },
-    })) ||
-    (await prisma.material.findFirst({
-      where: { codigoItem, codigoProjeto: null },
-    })) ||
-    (await prisma.material.findFirst({
-      where: { codigoItem },
-    }));
-
-  if (!material) {
-    return res.status(404).json({ error: "Material não encontrado." });
+  if (!projeto) {
+    return res.status(400).json({ error: "Campo 'projeto' é obrigatório." });
   }
 
-  const quantidade = Number(quantidadeConsumida);
+  // Processar todos os consumos em uma transação
+  const medicoes = await prisma.$transaction(async (tx) => {
+    const medicoesCriadas = [];
 
-  const medicao = await prisma.$transaction(async (tx) => {
-    const novaMedicao = await tx.medicao.create({
-      data: {
-        materialId: material.id,
-        quantidadeConsumida: quantidade,
-        projeto,
-        torre,
-        usuarioId,
-        origem: origem ?? "mobile",
-        dia: dia ? new Date(dia) : null,
-        semana,
-        cliente,
-        escala,
-        quantidadeTecnicos,
-        tecnicoLider,
-        nomesTecnicos,
-        supervisor,
-        tipoIntervalo,
-        tipoAcesso,
-        pa,
-        plataforma,
-        equipe,
-        tipoHora,
-        quantidadeEventos,
-        horaInicio,
-        horaFim,
-        tipoDano,
-        danoCodigo,
-        larguraDanoMm,
-        comprimentoDanoMm,
-        etapaProcesso,
-        etapaLixamento,
-        resinaTipo,
-        resinaQuantidade,
-        resinaCatalisador,
-        resinaLote,
-        resinaValidade,
-        massaTipo,
-        massaQuantidade,
-        massaCatalisador,
-        massaLote,
-        massaValidade,
-        nucleoTipo,
-        nucleoEspessuraMm,
-        puTipo,
-        puMassaPeso,
-        puCatalisadorPeso,
-        puLote,
-        puValidade,
-        gelTipo,
-        gelPeso,
-        gelCatalisadorPeso,
-        gelLote,
-        gelValidade,
-        retrabalho,
-      },
-    });
+    for (const consumo of consumosParaProcessar) {
+      // Buscar material considerando projeto (o mesmo item pode existir em projetos diferentes)
+      // Regra:
+      // 1) tenta por (codigoItem + codigoProjeto == projeto)
+      // 2) fallback: (codigoItem + codigoProjeto == null)
+      // 3) fallback: primeiro por codigoItem (compatibilidade)
+      const material =
+        (await tx.material.findFirst({
+          where: { codigoItem: consumo.codigoItem, codigoProjeto: projeto },
+        })) ||
+        (await tx.material.findFirst({
+          where: { codigoItem: consumo.codigoItem, codigoProjeto: null },
+        })) ||
+        (await tx.material.findFirst({
+          where: { codigoItem: consumo.codigoItem },
+        }));
 
-    await tx.material.update({
-      where: { id: material.id },
-      data: {
-        estoqueAtual: material.estoqueAtual - quantidade,
-      },
-    });
+      if (!material) {
+        throw new Error(`Material não encontrado: ${consumo.codigoItem}`);
+      }
 
-    return novaMedicao;
+      const quantidade = Number(consumo.quantidadeConsumida);
+
+      const novaMedicao = await tx.medicao.create({
+        data: {
+          materialId: material.id,
+          quantidadeConsumida: quantidade,
+          projeto,
+          torre,
+          usuarioId,
+          origem: origem ?? "mobile",
+          dia: dia ? new Date(dia) : null,
+          semana,
+          cliente,
+          escala,
+          quantidadeTecnicos,
+          tecnicoLider,
+          nomesTecnicos,
+          supervisor,
+          tipoIntervalo,
+          tipoAcesso,
+          pa,
+          plataforma,
+          equipe,
+          tipoHora,
+          quantidadeEventos,
+          horaInicio,
+          horaFim,
+          tipoDano,
+          danoCodigo,
+          larguraDanoMm,
+          comprimentoDanoMm,
+          etapaProcesso,
+          etapaLixamento,
+          resinaTipo,
+          resinaQuantidade,
+          resinaCatalisador,
+          resinaLote,
+          resinaValidade,
+          massaTipo,
+          massaQuantidade,
+          massaCatalisador,
+          massaLote,
+          massaValidade,
+          nucleoTipo,
+          nucleoEspessuraMm,
+          puTipo,
+          puMassaPeso,
+          puCatalisadorPeso,
+          puLote,
+          puValidade,
+          gelTipo,
+          gelPeso,
+          gelCatalisadorPeso,
+          gelLote,
+          gelValidade,
+          retrabalho,
+        },
+      });
+
+      await tx.material.update({
+        where: { id: material.id },
+        data: {
+          estoqueAtual: material.estoqueAtual - quantidade,
+        },
+      });
+
+      medicoesCriadas.push(novaMedicao);
+    }
+
+    return medicoesCriadas;
   });
 
-  // Envia a medição para o Smartsheet de forma assíncrona, sem bloquear a resposta
+  // Envia APENAS UMA linha para o Smartsheet (com todos os dados do apontamento)
   // eslint-disable-next-line no-console
-  console.log("[Medicao] Medição registrada no banco. Iniciando envio para Smartsheet...");
+  console.log(`[Medicao] ${medicoes.length} medição(ões) registrada(s) no banco. Enviando UMA linha para Smartsheet...`);
+  
+  // Usar os dados da primeira medição para o Smartsheet (todas têm os mesmos dados de apontamento)
+  const primeiraMedicao = medicoes[0];
+  const materialPrimeira = await prisma.material.findUnique({
+    where: { id: primeiraMedicao.materialId },
+  });
+
   registrarMedicaoNoSmartsheet({
     dia: dia ? new Date(dia) : null,
     semana,
@@ -754,10 +818,10 @@ app.post("/medicoes", async (req, res) => {
     gelLote,
     gelValidade,
     retrabalho,
-    codigoItem: material.codigoItem,
-    descricaoMaterial: material.descricao,
-    unidadeMaterial: material.unidade,
-    quantidadeConsumida: quantidade,
+    codigoItem: materialPrimeira?.codigoItem || "",
+    descricaoMaterial: materialPrimeira?.descricao || "",
+    unidadeMaterial: materialPrimeira?.unidade || "",
+    quantidadeConsumida: primeiraMedicao.quantidadeConsumida,
   }).catch((e) => {
     // eslint-disable-next-line no-console
     console.error("[Smartsheet] ❌ Falha ao enviar medição para Smartsheet:", e.message);
@@ -766,7 +830,7 @@ app.post("/medicoes", async (req, res) => {
     // Não bloquear a resposta ao usuário, mas registrar o erro detalhadamente
   });
 
-  res.status(201).json(medicao);
+  res.status(201).json({ medicoes, total: medicoes.length });
 });
 
 // Listar medições (visão tipo grid)
