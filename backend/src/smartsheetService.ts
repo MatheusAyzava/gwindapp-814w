@@ -633,13 +633,11 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     console.warn(`[Smartsheet] ⚠️ ATENÇÃO: Encontradas células com columnId duplicado:`, duplicados);
   }
 
-  // Log detalhado do que está sendo enviado
+  // Log resumido - não fazer JSON.stringify completo para evitar problemas
   // eslint-disable-next-line no-console
-  console.log(`[Smartsheet] Células a serem enviadas (${cells.length} células):`, JSON.stringify(cells.map(c => ({
-    columnId: c.columnId,
-    value: c.value,
-    displayValue: c.displayValue
-  })), null, 2));
+  console.log(`[Smartsheet] Células a serem enviadas: ${cells.length} células`);
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] Primeiras 3 células:`, cells.slice(0, 3).map(c => `columnId=${c.columnId}, value=${c.value}`));
   
   // Log resumido mostrando apenas os columnIds únicos (já declarado acima)
   // eslint-disable-next-line no-console
