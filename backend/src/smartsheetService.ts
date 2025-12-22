@@ -362,9 +362,6 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     colProjeto: colProjeto ? { id: colProjeto.id, titulo: sheet.columns.find(c => c.id === colProjeto.id)?.title } : null,
   });
   
-  // Usar colData se existir, senão usar colDia
-  const colDataOuDia = colData || colDia;
-  
   // Verificar se há colunas duplicadas (mesmo ID) - apenas para as principais
   const colunasPrincipaisParaVerificacao = [
     colDataOuDia, colSemana, colHoraEntrada, colHoraSaida, colCliente, colProjeto,
