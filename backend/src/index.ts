@@ -821,16 +821,7 @@ process.on('uncaughtException', (error) => {
   process.exit(1);
 });
 
-app.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Backend rodando na porta ${PORT}`);
-}).on('error', (err: any) => {
-  // eslint-disable-next-line no-console
-  console.error('Erro ao iniciar servidor:', err);
-  process.exit(1);
-});
-
-// Endpoint de diagnóstico do Smartsheet
+// Endpoint de diagnóstico do Smartsheet (ANTES do app.listen!)
 app.get("/smartsheet/status", async (_req, res) => {
   const status = {
     tokenConfigurado: !!process.env.SMARTSHEET_TOKEN,
