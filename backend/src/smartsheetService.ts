@@ -632,10 +632,15 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     // eslint-disable-next-line no-console
     console.error(`[Smartsheet] Detalhes das células:`, cells.map((c, i) => `Célula ${i}: columnId=${c.columnId}, value=${c.value}`).join("\n"));
     // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] Lista completa de colunas na planilha:`, sheet.columns.map(c => `"${c.title}" (ID: ${c.id})`).join(", "));
+    // eslint-disable-next-line no-console
+    console.error(`[Smartsheet] Colunas já usadas (rastreadas):`, Array.from(colunasJaUsadas).join(", "));
+    // eslint-disable-next-line no-console
     console.error(`[Smartsheet] ❌ CANCELANDO ENVIO: Dados não serão enviados pois estão incorretos.`);
     // eslint-disable-next-line no-console
     console.error(`[Smartsheet] PROBLEMA: A função findCol está retornando sempre a mesma coluna. Verifique os nomes das colunas no Smartsheet.`);
-    return; // Não enviar dados incorretos
+    // Lançar erro para que seja capturado pelo catch no index.ts
+    throw new Error(`Todas as células têm o mesmo columnId (${columnIdsUnicos[0]}). Verifique os logs para detalhes.`);
   }
   
   // Verificação adicional: se temos menos de 3 columnIds únicos, pode ser um problema

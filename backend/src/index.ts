@@ -760,7 +760,10 @@ app.post("/medicoes", async (req, res) => {
     quantidadeConsumida: quantidade,
   }).catch((e) => {
     // eslint-disable-next-line no-console
-    console.error("[Smartsheet] Falha ao enviar medição:", e.message);
+    console.error("[Smartsheet] ❌ Falha ao enviar medição para Smartsheet:", e.message);
+    // eslint-disable-next-line no-console
+    console.error("[Smartsheet] Stack trace:", e.stack);
+    // Não bloquear a resposta ao usuário, mas registrar o erro detalhadamente
   });
 
   res.status(201).json(medicao);
