@@ -689,6 +689,24 @@ export async function registrarMedicaoNoSmartsheet(dados: {
         },
       ],
     };
+    // Verificar se displayValue está presente nas células
+    const cellsComDisplayValue = cells.filter(c => (c as any).displayValue !== undefined);
+    const cellsSemDisplayValue = cells.filter(c => (c as any).displayValue === undefined && typeof (c as any).value === "string");
+    
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Verificação do payload:`);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] - Total de células: ${cells.length}`);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] - Células com displayValue: ${cellsComDisplayValue.length}`);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] - Células string SEM displayValue: ${cellsSemDisplayValue.length}`);
+    if (cellsSemDisplayValue.length > 0) {
+      // eslint-disable-next-line no-console
+      console.error(`[Smartsheet] ⚠️ PROBLEMA: ${cellsSemDisplayValue.length} células string não têm displayValue!`);
+      // eslint-disable-next-line no-console
+      console.error(`[Smartsheet] Primeiras células sem displayValue:`, cellsSemDisplayValue.slice(0, 5).map(c => ({ columnId: c.columnId, value: (c as any).value, type: typeof (c as any).value })));
+    }
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Payload completo:`, JSON.stringify(payload, null, 2));
     // eslint-disable-next-line no-console
