@@ -692,28 +692,85 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] ✅ Linha vazia criada: rowId=${rowId}, rowNumber=${rowNumber}`);
     
-    // Passo 2: Atualizar células da linha criada
+    // Passo 2: Buscar informações completas das colunas para validar PICKLIST
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Atualizando ${cells.length} células na linha ${rowId}...`);
+    console.log(`[Smartsheet] Buscando informações completas das colunas...`);
+    const sheetCompleto = await axios.get(
+      `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}`,
+      {
+        headers: {
+          Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
+        },
+      },
+    );
     
-    // Preparar células para atualização - garantir que todas tenham apenas 'value'
-    const cellsParaAtualizar = cells.map(c => {
-      const cell: any = { columnId: c.columnId };
-      if (c.value !== null && c.value !== undefined) {
-        cell.value = c.value;
+    const colunasCompletas = sheetCompleto.data.columns || [];
+    const colunasPicklist = new Map<number, string[]>();
+    
+    // Identificar colunas PICKLIST e suas opções
+    colunasCompletas.forEach((col: any) => {
+      if (col.type === "PICKLIST" && col.options) {
+        const opcoes = col.options.map((opt: any) => String(opt || "")).filter((opt: string) => opt.trim());
+        colunasPicklist.set(col.id, opcoes);
+        // eslint-disable-next-line no-console
+        console.log(`[Smartsheet] Coluna PICKLIST encontrada: "${col.title}" (ID: ${col.id}) com ${opcoes.length} opções`);
       }
-      return cell;
     });
+    
+    // Passo 3: Atualizar células da linha criada, filtrando valores inválidos para PICKLIST
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Preparando ${cells.length} células para atualização...`);
+    
+    // Preparar células para atualização - validar PICKLIST e garantir que todas tenham apenas 'value'
+    const cellsParaAtualizar: any[] = [];
+    const cellsIgnoradas: Array<{columnId: number, motivo: string}> = [];
+    
+    cells.forEach(c => {
+      // Verificar se é coluna PICKLIST
+      const opcoesPicklist = colunasPicklist.get(c.columnId);
+      if (opcoesPicklist && opcoesPicklist.length > 0) {
+        const valor = String(c.value || "").trim();
+        // Verificar se o valor está na lista de opções (case-insensitive)
+        const valorValido = opcoesPicklist.some(opt => 
+          String(opt || "").trim().toLowerCase() === valor.toLowerCase()
+        );
+        
+        if (!valorValido && valor !== "") {
+          const colunaInfo = colunasCompletas.find((col: any) => col.id === c.columnId);
+          cellsIgnoradas.push({
+            columnId: c.columnId,
+            motivo: `Valor "${valor}" não está na lista de opções do PICKLIST "${colunaInfo?.title || c.columnId}". Opções válidas: ${opcoesPicklist.slice(0, 5).join(", ")}${opcoesPicklist.length > 5 ? "..." : ""}`
+          });
+          return; // Pular esta célula
+        }
+      }
+      
+      if (c.value !== null && c.value !== undefined && c.value !== "") {
+        const cell: any = { columnId: c.columnId, value: c.value };
+        cellsParaAtualizar.push(cell);
+      }
+    });
+    
+    if (cellsIgnoradas.length > 0) {
+      // eslint-disable-next-line no-console
+      console.warn(`[Smartsheet] ⚠️ ${cellsIgnoradas.length} células ignoradas por valores inválidos em PICKLIST:`);
+      cellsIgnoradas.forEach(c => {
+        // eslint-disable-next-line no-console
+        console.warn(`[Smartsheet]   - Coluna ID ${c.columnId}: ${c.motivo}`);
+      });
+    }
+    
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ${cellsParaAtualizar.length} células válidas para atualizar (de ${cells.length} totais)`);
+    
+    if (cellsParaAtualizar.length === 0) {
+      // eslint-disable-next-line no-console
+      console.warn(`[Smartsheet] ⚠️ Nenhuma célula válida para atualizar! Linha ${rowId} permanecerá vazia.`);
+      return;
+    }
     
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Primeiras 5 células a atualizar:`, cellsParaAtualizar.slice(0, 5));
-    
-    const updatePayload = {
-      cells: cellsParaAtualizar,
-    };
-    
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Payload de atualização:`, JSON.stringify(updatePayload, null, 2));
     
     // Tentar atualizar em lotes menores (máximo 50 células por vez)
     const TAMANHO_LOTE = 50;
