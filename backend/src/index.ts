@@ -55,9 +55,13 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 // Configurar multer para upload de arquivos
 const upload = multer({ storage: multer.memoryStorage() });
 
-// Healthcheck
+// Healthcheck - usado por serviços de ping para manter o backend ativo
 app.get("/health", (_req, res) => {
-  res.json({ status: "ok" });
+  res.json({ 
+    status: "ok", 
+    timestamp: new Date().toISOString(),
+    service: "controle-materiais-backend"
+  });
 });
 
 // Healthcheck com banco (para diagnosticar Render/Supabase)
