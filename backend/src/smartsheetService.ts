@@ -25,7 +25,12 @@ export type SmartsheetRow = {
 export type SmartsheetSheet = {
   id: number;
   name: string;
-  columns: { id: number; title: string }[];
+  columns: Array<{
+    id: number;
+    title: string;
+    type?: string;
+    options?: string[];
+  }>;
   rows: SmartsheetRow[];
 };
 
