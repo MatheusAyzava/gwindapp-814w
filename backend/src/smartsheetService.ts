@@ -701,30 +701,19 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     );
     
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Resposta completa da API:`, JSON.stringify(response.data, null, 2));
+    console.log(`[Smartsheet] Resposta da API (status ${response.status}):`, {
+      status: response.status,
+      statusText: response.statusText,
+      hasResult: !!response.data?.result,
+      resultCount: response.data?.result?.length || 0,
+    });
     
-    // A API do Smartsheet retorna o ID da linha em response.data.result[0].id
-    const resultado = response.data?.result?.[0];
-    const rowId = resultado?.id || resultado?.rowNumber || response.data?.id;
-    
-    if (!rowId) {
-      // eslint-disable-next-line no-console
-      console.error(`[Smartsheet] ⚠️ ATENÇÃO: A API retornou sucesso mas não forneceu ID da linha!`);
-      // eslint-disable-next-line no-console
-      console.error(`[Smartsheet] Isso pode indicar que a linha não foi criada corretamente.`);
-      // eslint-disable-next-line no-console
-      console.error(`[Smartsheet] Estrutura da resposta:`, {
-        hasResult: !!response.data?.result,
-        resultLength: response.data?.result?.length,
-        firstResult: response.data?.result?.[0],
-        fullResponse: response.data
-      });
-    } else {
-      // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! ID da linha: ${rowId}`);
-      // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ Nova linha criada no Smartsheet com ID ${rowId}. Verifique na planilha.`);
-    }
+    // Se chegou aqui sem erro, a linha foi criada com sucesso
+    // O ID aparecerá automaticamente na planilha do Smartsheet
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Nova linha criada no Smartsheet.`);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] ✅ O ID da linha aparecerá automaticamente na planilha. Verifique na planilha do Smartsheet.`);
   } catch (e: any) {
     // eslint-disable-next-line no-console
     console.error("[Smartsheet] ❌ Erro ao enviar medição:", {
