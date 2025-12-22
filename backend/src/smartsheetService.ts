@@ -342,16 +342,22 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   const cells: SmartsheetCell[] = [];
 
   // Adicionar chatId primeiro (se a coluna existir)
-  if (colChatId) {
-    // Para texto, usar tanto value quanto displayValue para garantir que apareça
-    cells.push({ 
-      columnId: colChatId.id, 
-      value: novoChatId,
-      displayValue: novoChatId 
-    });
+  // Função auxiliar para adicionar células - usar displayValue para strings para garantir que apareçam
+  const addCell = (columnId: number, value: string | number | boolean | null | undefined, logName: string) => {
+    if (value === null || value === undefined || value === "") return;
+    const cell: any = { columnId };
+    if (typeof value === "string") {
+      cell.value = value;
+      cell.displayValue = value; // IMPORTANTE: displayValue garante que texto apareça
+    } else if (typeof value === "number") {
+      cell.value = value;
+    } else if (typeof value === "boolean") {
+      cell.value = value;
+    }
+    cells.push(cell);
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula chatId: columnId=${colChatId.id}, value=${novoChatId}`);
-  }
+    console.log(`[Smartsheet] Adicionando célula ${logName}: columnId=${columnId}, value=${value}, type=${typeof value}, hasDisplayValue=${!!cell.displayValue}`);
+  };
 
   // Usar colData se existir, senão usar colDia (para uso nos logs e células)
   const colDataOuDia = colData || colDia;
@@ -383,22 +389,9 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     console.error(`[Smartsheet] IDs únicos: ${idsUnicosPrincipais.length}, Total de colunas: ${idsColunasPrincipais.length}`);
   }
 
-  // Função auxiliar para adicionar células - usar displayValue para strings para garantir que apareçam
-  const addCell = (columnId: number, value: string | number | boolean | null | undefined, logName: string) => {
-    if (value === null || value === undefined || value === "") return;
-    const cell: any = { columnId };
-    if (typeof value === "string") {
-      cell.value = value;
-      cell.displayValue = value; // IMPORTANTE: displayValue garante que texto apareça
-    } else if (typeof value === "number") {
-      cell.value = value;
-    } else if (typeof value === "boolean") {
-      cell.value = value;
-    }
-    cells.push(cell);
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula ${logName}: columnId=${columnId}, value=${value}, type=${typeof value}`);
-  };
+  if (colChatId) {
+    addCell(colChatId.id, novoChatId, "chatId");
+  }
 
   if (colDataOuDia && dados.dia) {
     // Smartsheet espera datas no formato ISO sem horário (YYYY-MM-DD)
