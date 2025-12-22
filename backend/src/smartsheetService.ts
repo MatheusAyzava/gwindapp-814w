@@ -700,20 +700,32 @@ export async function registrarMedicaoNoSmartsheet(dados: {
       },
     );
     
+    // A API do Smartsheet retorna result como objeto (não array) quando cria uma linha
+    const resultado = response.data?.result;
+    const rowId = resultado?.id;
+    const rowNumber = resultado?.rowNumber;
+    
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Resposta da API (status ${response.status}):`, {
       status: response.status,
-      statusText: response.statusText,
-      hasResult: !!response.data?.result,
-      resultCount: response.data?.result?.length || 0,
+      message: response.data?.message,
+      resultCode: response.data?.resultCode,
+      rowId: rowId || "N/A",
+      rowNumber: rowNumber || "N/A",
     });
     
     // Se chegou aqui sem erro, a linha foi criada com sucesso
-    // O ID aparecerá automaticamente na planilha do Smartsheet
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Nova linha criada no Smartsheet.`);
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] ✅ O ID da linha aparecerá automaticamente na planilha. Verifique na planilha do Smartsheet.`);
+    if (rowNumber) {
+      // eslint-disable-next-line no-console
+      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Nova linha criada na linha ${rowNumber} do Smartsheet.`);
+      // eslint-disable-next-line no-console
+      console.log(`[Smartsheet] ✅ ID da linha: ${rowId || "N/A"}. Verifique na planilha do Smartsheet.`);
+    } else {
+      // eslint-disable-next-line no-console
+      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Nova linha criada no Smartsheet.`);
+      // eslint-disable-next-line no-console
+      console.log(`[Smartsheet] ✅ O ID da linha aparecerá automaticamente na planilha. Verifique na planilha do Smartsheet.`);
+    }
   } catch (e: any) {
     // eslint-disable-next-line no-console
     console.error("[Smartsheet] ❌ Erro ao enviar medição:", {
