@@ -343,7 +343,12 @@ export async function registrarMedicaoNoSmartsheet(dados: {
 
   // Adicionar chatId primeiro (se a coluna existir)
   if (colChatId) {
-    cells.push({ columnId: colChatId.id, value: novoChatId });
+    // Para texto, usar tanto value quanto displayValue para garantir que apareça
+    cells.push({ 
+      columnId: colChatId.id, 
+      value: novoChatId,
+      displayValue: novoChatId 
+    });
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Adicionando célula chatId: columnId=${colChatId.id}, value=${novoChatId}`);
   }
@@ -378,190 +383,195 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     console.error(`[Smartsheet] IDs únicos: ${idsUnicosPrincipais.length}, Total de colunas: ${idsColunasPrincipais.length}`);
   }
 
+  // Função auxiliar para adicionar células - usar displayValue para strings para garantir que apareçam
+  const addCell = (columnId: number, value: string | number | boolean | null | undefined, logName: string) => {
+    if (value === null || value === undefined || value === "") return;
+    const cell: any = { columnId };
+    if (typeof value === "string") {
+      cell.value = value;
+      cell.displayValue = value; // IMPORTANTE: displayValue garante que texto apareça
+    } else if (typeof value === "number") {
+      cell.value = value;
+    } else if (typeof value === "boolean") {
+      cell.value = value;
+    }
+    cells.push(cell);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Adicionando célula ${logName}: columnId=${columnId}, value=${value}, type=${typeof value}`);
+  };
+
   if (colDataOuDia && dados.dia) {
     // Smartsheet espera datas no formato ISO sem horário (YYYY-MM-DD)
     const isoDate =
       typeof dados.dia === "string"
         ? dados.dia
         : dados.dia.toISOString().substring(0, 10);
-    cells.push({ columnId: colDataOuDia.id, value: isoDate });
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula ${colData ? "Data" : "Dia"}: columnId=${colDataOuDia.id}, value=${isoDate}`);
+    addCell(colDataOuDia.id, isoDate, colData ? "Data" : "Dia");
   }
   if (colSemana && dados.semana) {
-    cells.push({ columnId: colSemana.id, value: dados.semana });
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula Semana: columnId=${colSemana.id}, value=${dados.semana}`);
+    addCell(colSemana.id, dados.semana, "Semana");
   }
   if (colHoraEntrada && dados.horaInicio) {
-    cells.push({ columnId: colHoraEntrada.id, value: dados.horaInicio });
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula Hora Entrada: columnId=${colHoraEntrada.id}, value=${dados.horaInicio}`);
+    addCell(colHoraEntrada.id, dados.horaInicio, "Hora Entrada");
   }
   if (colHoraSaida && dados.horaFim) {
-    cells.push({ columnId: colHoraSaida.id, value: dados.horaFim });
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula Hora Saída: columnId=${colHoraSaida.id}, value=${dados.horaFim}`);
+    addCell(colHoraSaida.id, dados.horaFim, "Hora Saída");
   }
   if (colCliente && dados.cliente) {
-    cells.push({ columnId: colCliente.id, value: dados.cliente });
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula Cliente: columnId=${colCliente.id}, value=${dados.cliente}`);
+    addCell(colCliente.id, dados.cliente, "Cliente");
   }
-  if (colProjeto) {
-    cells.push({ columnId: colProjeto.id, value: dados.projeto });
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Adicionando célula Projeto: columnId=${colProjeto.id}, value=${dados.projeto}`);
+  if (colProjeto && dados.projeto) {
+    addCell(colProjeto.id, dados.projeto, "Projeto");
   }
   if (colEscala && dados.escala) {
-    cells.push({ columnId: colEscala.id, value: dados.escala });
+    addCell(colEscala.id, dados.escala, "Escala");
   }
   if (colTecnicoLider && dados.tecnicoLider) {
-    cells.push({ columnId: colTecnicoLider.id, value: dados.tecnicoLider });
+    addCell(colTecnicoLider.id, dados.tecnicoLider, "Técnico Líder");
   }
   if (colQtdTec && typeof dados.quantidadeTecnicos === "number") {
-    cells.push({ columnId: colQtdTec.id, value: dados.quantidadeTecnicos });
+    addCell(colQtdTec.id, dados.quantidadeTecnicos, "Qtd Técnicos");
   }
   if (colNomesTec && dados.nomesTecnicos) {
-    cells.push({ columnId: colNomesTec.id, value: dados.nomesTecnicos });
+    addCell(colNomesTec.id, dados.nomesTecnicos, "Nomes Técnicos");
   }
   if (colSupervisor && dados.supervisor) {
-    cells.push({ columnId: colSupervisor.id, value: dados.supervisor });
+    addCell(colSupervisor.id, dados.supervisor, "Supervisor");
   }
   if (colTipoIntervalo && dados.tipoIntervalo) {
-    cells.push({ columnId: colTipoIntervalo.id, value: dados.tipoIntervalo });
+    addCell(colTipoIntervalo.id, dados.tipoIntervalo, "Tipo Intervalo");
   }
   if (colTipoAcesso && dados.tipoAcesso) {
-    cells.push({ columnId: colTipoAcesso.id, value: dados.tipoAcesso });
+    addCell(colTipoAcesso.id, dados.tipoAcesso, "Tipo Acesso");
   }
   if (colPa && dados.pa) {
-    cells.push({ columnId: colPa.id, value: dados.pa });
+    addCell(colPa.id, dados.pa, "Pá");
   }
   if (colTorre && dados.torre) {
-    cells.push({ columnId: colTorre.id, value: dados.torre });
+    addCell(colTorre.id, dados.torre, "Torre");
   }
   if (colPlataforma && dados.plataforma) {
-    cells.push({ columnId: colPlataforma.id, value: dados.plataforma });
+    addCell(colPlataforma.id, dados.plataforma, "Plataforma");
   }
   if (colEquipe && dados.equipe) {
-    cells.push({ columnId: colEquipe.id, value: dados.equipe });
+    addCell(colEquipe.id, dados.equipe, "Equipe");
   }
   if (colTipoHora && dados.tipoHora) {
-    cells.push({ columnId: colTipoHora.id, value: dados.tipoHora });
+    addCell(colTipoHora.id, dados.tipoHora, "Tipo Hora");
   }
   if (colQtdEventos && typeof dados.quantidadeEventos === "number") {
-    cells.push({ columnId: colQtdEventos.id, value: dados.quantidadeEventos });
+    addCell(colQtdEventos.id, dados.quantidadeEventos, "Qtd Eventos");
   }
   if (colTipoDano && dados.tipoDano) {
-    cells.push({ columnId: colTipoDano.id, value: dados.tipoDano });
+    addCell(colTipoDano.id, dados.tipoDano, "Tipo Dano");
   }
   if (colDanoCodigo && dados.danoCodigo) {
-    cells.push({ columnId: colDanoCodigo.id, value: dados.danoCodigo });
+    addCell(colDanoCodigo.id, dados.danoCodigo, "Dano Código");
   }
   if (colLarguraDano && typeof dados.larguraDanoMm === "number") {
-    cells.push({ columnId: colLarguraDano.id, value: dados.larguraDanoMm });
+    addCell(colLarguraDano.id, dados.larguraDanoMm, "Largura Dano");
   }
   if (colComprimentoDano && typeof dados.comprimentoDanoMm === "number") {
-    cells.push({ columnId: colComprimentoDano.id, value: dados.comprimentoDanoMm });
+    addCell(colComprimentoDano.id, dados.comprimentoDanoMm, "Comprimento Dano");
   }
   if (colEtapaProcesso && dados.etapaProcesso) {
-    cells.push({ columnId: colEtapaProcesso.id, value: dados.etapaProcesso });
+    addCell(colEtapaProcesso.id, dados.etapaProcesso, "Etapa Processo");
   }
   if (colEtapaLixamento && dados.etapaLixamento) {
-    cells.push({ columnId: colEtapaLixamento.id, value: dados.etapaLixamento });
+    addCell(colEtapaLixamento.id, dados.etapaLixamento, "Etapa Lixamento");
   }
   if (colResinaTipo && dados.resinaTipo) {
-    cells.push({ columnId: colResinaTipo.id, value: dados.resinaTipo });
+    addCell(colResinaTipo.id, dados.resinaTipo, "Resina Tipo");
   }
   if (colResinaQtd && typeof dados.resinaQuantidade === "number") {
-    cells.push({ columnId: colResinaQtd.id, value: dados.resinaQuantidade });
+    addCell(colResinaQtd.id, dados.resinaQuantidade, "Resina Qtd");
   }
   if (colResinaCatalisador && dados.resinaCatalisador) {
-    cells.push({ columnId: colResinaCatalisador.id, value: dados.resinaCatalisador });
+    addCell(colResinaCatalisador.id, dados.resinaCatalisador, "Resina Catalisador");
   }
   if (colResinaLote && dados.resinaLote) {
-    cells.push({ columnId: colResinaLote.id, value: dados.resinaLote });
+    addCell(colResinaLote.id, dados.resinaLote, "Resina Lote");
   }
   if (colResinaValidade && dados.resinaValidade) {
     const isoDate = typeof dados.resinaValidade === "string" 
       ? dados.resinaValidade 
       : new Date(dados.resinaValidade).toISOString().substring(0, 10);
-    cells.push({ columnId: colResinaValidade.id, value: isoDate });
+    addCell(colResinaValidade.id, isoDate, "Resina Validade");
   }
   if (colMassaTipo && dados.massaTipo) {
-    cells.push({ columnId: colMassaTipo.id, value: dados.massaTipo });
+    addCell(colMassaTipo.id, dados.massaTipo, "Massa Tipo");
   }
   if (colMassaQtd && typeof dados.massaQuantidade === "number") {
-    cells.push({ columnId: colMassaQtd.id, value: dados.massaQuantidade });
+    addCell(colMassaQtd.id, dados.massaQuantidade, "Massa Qtd");
   }
   if (colMassaCatalisador && dados.massaCatalisador) {
-    cells.push({ columnId: colMassaCatalisador.id, value: dados.massaCatalisador });
+    addCell(colMassaCatalisador.id, dados.massaCatalisador, "Massa Catalisador");
   }
   if (colMassaLote && dados.massaLote) {
-    cells.push({ columnId: colMassaLote.id, value: dados.massaLote });
+    addCell(colMassaLote.id, dados.massaLote, "Massa Lote");
   }
   if (colMassaValidade && dados.massaValidade) {
     const isoDate = typeof dados.massaValidade === "string" 
       ? dados.massaValidade 
       : new Date(dados.massaValidade).toISOString().substring(0, 10);
-    cells.push({ columnId: colMassaValidade.id, value: isoDate });
+    addCell(colMassaValidade.id, isoDate, "Massa Validade");
   }
   if (colNucleoTipo && dados.nucleoTipo) {
-    cells.push({ columnId: colNucleoTipo.id, value: dados.nucleoTipo });
+    addCell(colNucleoTipo.id, dados.nucleoTipo, "Núcleo Tipo");
   }
   if (colNucleoEspessura && typeof dados.nucleoEspessuraMm === "number") {
-    cells.push({ columnId: colNucleoEspessura.id, value: dados.nucleoEspessuraMm });
+    addCell(colNucleoEspessura.id, dados.nucleoEspessuraMm, "Núcleo Espessura");
   }
   if (colPuTipo && dados.puTipo) {
-    cells.push({ columnId: colPuTipo.id, value: dados.puTipo });
+    addCell(colPuTipo.id, dados.puTipo, "PU Tipo");
   }
   if (colPuPeso && typeof dados.puMassaPeso === "number") {
-    cells.push({ columnId: colPuPeso.id, value: dados.puMassaPeso });
+    addCell(colPuPeso.id, dados.puMassaPeso, "PU Peso");
   }
   if (colPuCatalisador && typeof dados.puCatalisadorPeso === "number") {
-    cells.push({ columnId: colPuCatalisador.id, value: dados.puCatalisadorPeso });
+    addCell(colPuCatalisador.id, dados.puCatalisadorPeso, "PU Catalisador");
   }
   if (colPuLote && dados.puLote) {
-    cells.push({ columnId: colPuLote.id, value: dados.puLote });
+    addCell(colPuLote.id, dados.puLote, "PU Lote");
   }
   if (colPuValidade && dados.puValidade) {
     const isoDate = typeof dados.puValidade === "string" 
       ? dados.puValidade 
       : new Date(dados.puValidade).toISOString().substring(0, 10);
-    cells.push({ columnId: colPuValidade.id, value: isoDate });
+    addCell(colPuValidade.id, isoDate, "PU Validade");
   }
   if (colGelTipo && dados.gelTipo) {
-    cells.push({ columnId: colGelTipo.id, value: dados.gelTipo });
+    addCell(colGelTipo.id, dados.gelTipo, "Gel Tipo");
   }
   if (colGelPeso && typeof dados.gelPeso === "number") {
-    cells.push({ columnId: colGelPeso.id, value: dados.gelPeso });
+    addCell(colGelPeso.id, dados.gelPeso, "Gel Peso");
   }
   if (colGelCatalisador && typeof dados.gelCatalisadorPeso === "number") {
-    cells.push({ columnId: colGelCatalisador.id, value: dados.gelCatalisadorPeso });
+    addCell(colGelCatalisador.id, dados.gelCatalisadorPeso, "Gel Catalisador");
   }
   if (colGelLote && dados.gelLote) {
-    cells.push({ columnId: colGelLote.id, value: dados.gelLote });
+    addCell(colGelLote.id, dados.gelLote, "Gel Lote");
   }
   if (colGelValidade && dados.gelValidade) {
     const isoDate = typeof dados.gelValidade === "string" 
       ? dados.gelValidade 
       : new Date(dados.gelValidade).toISOString().substring(0, 10);
-    cells.push({ columnId: colGelValidade.id, value: isoDate });
+    addCell(colGelValidade.id, isoDate, "Gel Validade");
   }
   if (colRetrabalho && typeof dados.retrabalho === "boolean") {
-    cells.push({ columnId: colRetrabalho.id, value: dados.retrabalho ? "Sim" : "Não" });
+    addCell(colRetrabalho.id, dados.retrabalho ? "Sim" : "Não", "Retrabalho");
   }
   if (colItemCodigo && dados.codigoItem) {
-    cells.push({ columnId: colItemCodigo.id, value: dados.codigoItem });
+    addCell(colItemCodigo.id, dados.codigoItem, "Item Código");
   }
   if (colItemDescricao && dados.descricaoMaterial) {
-    cells.push({ columnId: colItemDescricao.id, value: dados.descricaoMaterial });
+    addCell(colItemDescricao.id, dados.descricaoMaterial, "Item Descrição");
   }
   if (colQtdConsumida && typeof dados.quantidadeConsumida === "number") {
-    cells.push({ columnId: colQtdConsumida.id, value: dados.quantidadeConsumida });
+    addCell(colQtdConsumida.id, dados.quantidadeConsumida, "Qtd Consumida");
   }
   if (colUnidade && dados.unidadeMaterial) {
-    cells.push({ columnId: colUnidade.id, value: dados.unidadeMaterial });
+    addCell(colUnidade.id, dados.unidadeMaterial, "Unidade");
   }
 
   // Log detalhado das colunas encontradas e não encontradas
