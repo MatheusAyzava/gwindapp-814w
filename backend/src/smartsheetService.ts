@@ -684,44 +684,17 @@ export async function registrarMedicaoNoSmartsheet(dados: {
   }
 
   try {
+    // MÉTODO ALTERNATIVO: Criar linha vazia primeiro, depois atualizar células
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Enviando medição para Smartsheet...`);
-    const payload = {
-      toBottom: true,
-      rows: [
-        {
-          cells,
-        },
-      ],
-    };
-    // Verificar se displayValue está presente nas células
-    const cellsComDisplayValue = cells.filter(c => (c as any).displayValue !== undefined);
-    const cellsSemDisplayValue = cells.filter(c => (c as any).displayValue === undefined && typeof (c as any).value === "string");
+    console.log(`[Smartsheet] Método alternativo: Criando linha vazia primeiro...`);
     
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Verificação do payload:`);
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] - Total de células: ${cells.length}`);
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] - Células com displayValue: ${cellsComDisplayValue.length}`);
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] - Células string SEM displayValue: ${cellsSemDisplayValue.length}`);
-    if (cellsSemDisplayValue.length > 0) {
-      // eslint-disable-next-line no-console
-      console.error(`[Smartsheet] ⚠️ PROBLEMA: ${cellsSemDisplayValue.length} células string não têm displayValue!`);
-      // eslint-disable-next-line no-console
-      console.error(`[Smartsheet] Primeiras células sem displayValue:`, cellsSemDisplayValue.slice(0, 5).map(c => ({ columnId: c.columnId, value: (c as any).value, type: typeof (c as any).value })));
-    }
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Payload completo:`, JSON.stringify(payload, null, 2));
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Total de células no payload: ${cells.length}`);
-    // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Primeiras 5 células:`, cells.slice(0, 5).map(c => `columnId=${c.columnId}, value=${c.value}, type=${typeof c.value}`));
-    
-    const response = await axios.post(
+    // Passo 1: Criar linha vazia
+    const createResponse = await axios.post(
       `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows`,
-      payload,
+      {
+        toBottom: true,
+        rows: [{}], // Linha vazia
+      },
       {
         headers: {
           Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
@@ -730,31 +703,79 @@ export async function registrarMedicaoNoSmartsheet(dados: {
       },
     );
     
-    // A API do Smartsheet retorna result como objeto (não array) quando cria uma linha
-    const resultado = response.data?.result;
-    const rowId = resultado?.id;
-    const rowNumber = resultado?.rowNumber;
+    const rowId = createResponse.data?.result?.id;
+    const rowNumber = createResponse.data?.result?.rowNumber;
+    
+    if (!rowId) {
+      // eslint-disable-next-line no-console
+      console.error(`[Smartsheet] ❌ Erro: Não foi possível criar linha vazia. Resposta:`, createResponse.data);
+      return;
+    }
     
     // eslint-disable-next-line no-console
-    console.log(`[Smartsheet] Resposta da API (status ${response.status}):`, {
-      status: response.status,
-      message: response.data?.message,
-      resultCode: response.data?.resultCode,
-      rowId: rowId || "N/A",
-      rowNumber: rowNumber || "N/A",
+    console.log(`[Smartsheet] ✅ Linha vazia criada: rowId=${rowId}, rowNumber=${rowNumber}`);
+    
+    // Passo 2: Atualizar células da linha criada
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Atualizando ${cells.length} células na linha ${rowId}...`);
+    
+    // Preparar células para atualização - garantir que todas tenham apenas 'value'
+    const cellsParaAtualizar = cells.map(c => {
+      const cell: any = { columnId: c.columnId };
+      if (c.value !== null && c.value !== undefined) {
+        cell.value = c.value;
+      }
+      return cell;
     });
     
-    // Se chegou aqui sem erro, a linha foi criada com sucesso
-    if (rowNumber) {
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Primeiras 5 células a atualizar:`, cellsParaAtualizar.slice(0, 5));
+    
+    const updatePayload = {
+      cells: cellsParaAtualizar,
+    };
+    
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Payload de atualização:`, JSON.stringify(updatePayload, null, 2));
+    
+    const updateResponse = await axios.put(
+      `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows/${rowId}`,
+      updatePayload,
+      {
+        headers: {
+          Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
+          "Content-Type": "application/json",
+        },
+      },
+    );
+    
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Resposta da atualização (status ${updateResponse.status}):`, {
+      status: updateResponse.status,
+      message: updateResponse.data?.message,
+      resultCode: updateResponse.data?.resultCode,
+      rowId: updateResponse.data?.result?.id,
+      rowNumber: updateResponse.data?.result?.rowNumber,
+      cellsAtualizadas: updateResponse.data?.result?.cells?.length || 0,
+    });
+    
+    // Verificar se as células foram atualizadas
+    const cellsNaResposta = updateResponse.data?.result?.cells || [];
+    const cellsComValor = cellsNaResposta.filter((c: any) => c.value !== null && c.value !== undefined && c.value !== "");
+    
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Células na resposta: ${cellsNaResposta.length}, Células com valor: ${cellsComValor.length}`);
+    
+    if (cellsComValor.length > 0) {
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Nova linha criada na linha ${rowNumber} do Smartsheet.`);
+      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Linha ${rowNumber} criada e ${cellsComValor.length} células atualizadas.`);
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ ID da linha: ${rowId || "N/A"}. Verifique na planilha do Smartsheet.`);
+      console.log(`[Smartsheet] ✅ Primeiras células atualizadas:`, cellsComValor.slice(0, 5).map((c: any) => `columnId=${c.columnId}, value=${c.value}`));
     } else {
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ Medição enviada com sucesso! Nova linha criada no Smartsheet.`);
+      console.error(`[Smartsheet] ⚠️ ATENÇÃO: Linha criada mas nenhuma célula foi atualizada com valor!`);
       // eslint-disable-next-line no-console
-      console.log(`[Smartsheet] ✅ O ID da linha aparecerá automaticamente na planilha. Verifique na planilha do Smartsheet.`);
+      console.error(`[Smartsheet] Verifique se os tipos de dados estão corretos.`);
     }
   } catch (e: any) {
     // eslint-disable-next-line no-console
