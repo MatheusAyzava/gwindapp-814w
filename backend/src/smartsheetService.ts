@@ -688,6 +688,10 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     };
     // eslint-disable-next-line no-console
     console.log(`[Smartsheet] Payload completo:`, JSON.stringify(payload, null, 2));
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Total de células no payload: ${cells.length}`);
+    // eslint-disable-next-line no-console
+    console.log(`[Smartsheet] Primeiras 5 células:`, cells.slice(0, 5).map(c => `columnId=${c.columnId}, value=${c.value}, type=${typeof c.value}`));
     
     const response = await axios.post(
       `https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows`,
