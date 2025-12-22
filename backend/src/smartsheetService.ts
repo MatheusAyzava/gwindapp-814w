@@ -654,6 +654,9 @@ export async function registrarMedicaoNoSmartsheet(dados: {
     return;
   }
 
+  // eslint-disable-next-line no-console
+  console.log(`[Smartsheet] ✅ Validação passou. Iniciando método alternativo...`);
+  
   try {
     // MÉTODO ALTERNATIVO: Criar linha vazia primeiro, depois atualizar células
     // eslint-disable-next-line no-console
