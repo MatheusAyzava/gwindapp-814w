@@ -85,6 +85,8 @@ app.post("/upload/imagem", async (req, res) => {
     }
 
     // Opção 1: Upload para Supabase (recomendado)
+    const SUPABASE_URL = process.env.SUPABASE_URL;
+    const SUPABASE_KEY = process.env.SUPABASE_ANON_KEY;
     if (SUPABASE_URL && SUPABASE_KEY) {
       const imageUrl = await uploadImagemParaSupabase(
         base64Image,
