@@ -6,6 +6,9 @@
  * ⚠️ ATENÇÃO: Esta ação é IRREVERSÍVEL!
  */
 
+// Carregar variáveis de ambiente do arquivo .env
+require('dotenv/config');
+
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
