@@ -891,41 +891,6 @@ app.get("/medicoes", async (_req, res) => {
   }
 });
 
-// Limpar todos os dados (materiais e medições) - CUIDADO: Esta ação é irreversível!
-// Usando POST ao invés de DELETE para evitar problemas com alguns serviços de hospedagem
-app.post("/materiais/limpar-tudo", async (_req, res) => {
-  try {
-    // eslint-disable-next-line no-console
-    console.log("[Limpar] Iniciando limpeza de dados...");
-    
-    // Deletar primeiro as medições (têm foreign key para materiais)
-    const medicoesDeletadas = await prisma.medicao.deleteMany({});
-    // eslint-disable-next-line no-console
-    console.log(`[Limpar] ${medicoesDeletadas.count} medição(ões) deletada(s)`);
-    
-    // Depois deletar os materiais
-    const resultado = await prisma.material.deleteMany({});
-    // eslint-disable-next-line no-console
-    console.log(`[Limpar] ${resultado.count} material(is) deletado(s)`);
-    
-    res.json({
-      mensagem: "Todos os dados foram apagados com sucesso.",
-      materiaisDeletados: resultado.count,
-      medicoesDeletadas: medicoesDeletadas.count,
-    });
-  } catch (e: any) {
-    // eslint-disable-next-line no-console
-    console.error("[Limpar] Erro ao apagar dados:", e);
-    // eslint-disable-next-line no-console
-    console.error("[Limpar] Stack:", e?.stack);
-    res.status(500).json({ 
-      error: "Erro ao apagar dados.",
-      detalhes: e?.message || String(e),
-      stack: process.env.NODE_ENV === 'development' ? e?.stack : undefined
-    });
-  }
-});
-
 // Tratamento de erros não capturados
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
