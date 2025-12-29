@@ -125,4 +125,15 @@ model Usuario {
   medicoes Medicao[]
 }
 
+model ProjetoCliente {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  tipo      String   // "projeto" ou "cliente"
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([nome, tipo])
+  @@index([tipo])
+}
+
 

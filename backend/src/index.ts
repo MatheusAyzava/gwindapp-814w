@@ -987,6 +987,83 @@ app.get("/smartsheet/status", async (_req, res) => {
   res.json(status);
 });
 
+// Endpoints para gerenciar projetos e clientes
+// GET /projetos-clientes?tipo=projeto ou ?tipo=cliente
+app.get("/projetos-clientes", async (req, res) => {
+  try {
+    const tipo = req.query.tipo as string | undefined;
+    const apenasNomes = req.query.nomes === "true"; // Se quiser apenas nomes como array
+    const where = tipo ? { tipo } : {};
+    
+    const itens = await prisma.projetoCliente.findMany({
+      where,
+      orderBy: { nome: "asc" },
+    });
+    
+    if (apenasNomes) {
+      res.json(itens.map(item => item.nome));
+    } else {
+      res.json(itens);
+    }
+  } catch (e: any) {
+    console.error("[Projetos/Clientes] Erro ao listar:", e?.message);
+    res.status(500).json({ error: "Erro ao listar projetos/clientes.", detalhes: e?.message });
+  }
+});
+
+// POST /projetos-clientes - adicionar projeto ou cliente
+app.post("/projetos-clientes", async (req, res) => {
+  try {
+    const { nome, tipo } = req.body;
+    
+    if (!nome || !tipo) {
+      return res.status(400).json({ error: "Nome e tipo são obrigatórios." });
+    }
+    
+    if (tipo !== "projeto" && tipo !== "cliente") {
+      return res.status(400).json({ error: "Tipo deve ser 'projeto' ou 'cliente'." });
+    }
+    
+    const item = await prisma.projetoCliente.upsert({
+      where: {
+        nome_tipo: {
+          nome: nome.trim(),
+          tipo,
+        },
+      },
+      update: {},
+      create: {
+        nome: nome.trim(),
+        tipo,
+      },
+    });
+    
+    res.json({ id: item.id, nome: item.nome, tipo: item.tipo });
+  } catch (e: any) {
+    console.error("[Projetos/Clientes] Erro ao adicionar:", e?.message);
+    res.status(500).json({ error: "Erro ao adicionar projeto/cliente.", detalhes: e?.message });
+  }
+});
+
+// DELETE /projetos-clientes/:id - remover projeto ou cliente
+app.delete("/projetos-clientes/:id", async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isFinite(id)) {
+      return res.status(400).json({ error: "ID inválido." });
+    }
+    
+    await prisma.projetoCliente.delete({
+      where: { id },
+    });
+    
+    res.json({ ok: true });
+  } catch (e: any) {
+    console.error("[Projetos/Clientes] Erro ao remover:", e?.message);
+    res.status(500).json({ error: "Erro ao remover projeto/cliente.", detalhes: e?.message });
+  }
+});
+
 // Conectar ao banco no startup (sem derrubar o servidor se falhar, mas logando claramente)
 conectarBancoComTimeout(15000)
   .then(() => console.log("✅ Conexão com banco OK"))
