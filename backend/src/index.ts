@@ -280,8 +280,23 @@ app.post("/materiais/import", async (req, res) => {
 
     console.log(`[Import] Recebidos ${itens.length} itens para importar`);
 
+    // Buscar todos os projetos que existem no estoque
+    const materiaisExistentes = await prisma.material.findMany({
+      select: { codigoProjeto: true },
+      distinct: ['codigoProjeto'],
+    });
+    const projetosNoEstoque = new Set(
+      materiaisExistentes
+        .map((m) => m.codigoProjeto)
+        .filter((p): p is string => Boolean(p))
+    );
+    
+    console.log(`[Import] Projetos encontrados no estoque: ${Array.from(projetosNoEstoque).join(', ')}`);
+
     const resultados = [];
     const erros: string[] = [];
+    let substituidos = 0;
+    let novos = 0;
 
     for (const item of itens) {
       if (!item.codigoItem || !item.descricao || !item.unidade) {
@@ -291,52 +306,76 @@ app.post("/materiais/import", async (req, res) => {
 
       try {
         const valorEstoqueInicial = Number(item.estoqueInicial ?? 0);
-
         const codigoProjetoValue = item.codigoProjeto || "";
         
-        const material = await prisma.material.upsert({
-        where: {
-          codigoItem_codigoProjeto: {
-            codigoItem: item.codigoItem,
-            codigoProjeto: codigoProjetoValue,
+        // Verificar se o material já existe no banco
+        const materialExistente = await prisma.material.findUnique({
+          where: {
+            codigoItem_codigoProjeto: {
+              codigoItem: item.codigoItem,
+              codigoProjeto: codigoProjetoValue,
+            },
           },
-        },
-        update: {
-          descricao: item.descricao,
-          unidade: item.unidade,
-          estoqueInicial: valorEstoqueInicial,
-          estoqueAtual: valorEstoqueInicial,
-          codigoEstoque: item.codigoEstoque || undefined,
-          descricaoEstoque: item.descricaoEstoque || undefined,
-          confirmado: item.confirmado ?? undefined,
-          pedido: item.pedido ?? undefined,
-          disponivel: item.disponivel ?? undefined,
-          precoItem: item.precoItem ?? undefined,
-          total: item.total ?? undefined,
-          codigoProjeto: codigoProjetoValue || undefined,
-          descricaoProjeto: item.descricaoProjeto || undefined,
-          centroCustos: item.centroCustos || undefined,
-        },
-        create: {
-          codigoItem: item.codigoItem,
-          descricao: item.descricao,
-          unidade: item.unidade,
-          estoqueInicial: valorEstoqueInicial,
-          estoqueAtual: valorEstoqueInicial,
-          codigoEstoque: item.codigoEstoque || undefined,
-          descricaoEstoque: item.descricaoEstoque || undefined,
-          confirmado: item.confirmado ?? undefined,
-          pedido: item.pedido ?? undefined,
-          disponivel: item.disponivel ?? undefined,
-          precoItem: item.precoItem ?? undefined,
-          total: item.total ?? undefined,
-          codigoProjeto: codigoProjetoValue || undefined,
-          descricaoProjeto: item.descricaoProjeto || undefined,
-          centroCustos: item.centroCustos || undefined,
-        },
         });
 
-        resultados.push(material);
+        // Se o material existe E pertence a um projeto do estoque, substituir
+        // Caso contrário, criar novo
+        const deveSubstituir = materialExistente && 
+          codigoProjetoValue && 
+          projetosNoEstoque.has(codigoProjetoValue);
+
+        if (deveSubstituir) {
+          // Substituir material existente
+          const material = await prisma.material.update({
+            where: {
+              codigoItem_codigoProjeto: {
+                codigoItem: item.codigoItem,
+                codigoProjeto: codigoProjetoValue,
+              },
+            },
+            data: {
+              descricao: item.descricao,
+              unidade: item.unidade,
+              estoqueInicial: valorEstoqueInicial,
+              estoqueAtual: valorEstoqueInicial,
+              codigoEstoque: item.codigoEstoque || undefined,
+              descricaoEstoque: item.descricaoEstoque || undefined,
+              confirmado: item.confirmado ?? undefined,
+              pedido: item.pedido ?? undefined,
+              disponivel: item.disponivel ?? undefined,
+              precoItem: item.precoItem ?? undefined,
+              total: item.total ?? undefined,
+              codigoProjeto: codigoProjetoValue || undefined,
+              descricaoProjeto: item.descricaoProjeto || undefined,
+              centroCustos: item.centroCustos || undefined,
+            },
+          });
+          resultados.push(material);
+          substituidos++;
+        } else {
+          // Criar novo material
+          const material = await prisma.material.create({
+            data: {
+              codigoItem: item.codigoItem,
+              descricao: item.descricao,
+              unidade: item.unidade,
+              estoqueInicial: valorEstoqueInicial,
+              estoqueAtual: valorEstoqueInicial,
+              codigoEstoque: item.codigoEstoque || undefined,
+              descricaoEstoque: item.descricaoEstoque || undefined,
+              confirmado: item.confirmado ?? undefined,
+              pedido: item.pedido ?? undefined,
+              disponivel: item.disponivel ?? undefined,
+              precoItem: item.precoItem ?? undefined,
+              total: item.total ?? undefined,
+              codigoProjeto: codigoProjetoValue || undefined,
+              descricaoProjeto: item.descricaoProjeto || undefined,
+              centroCustos: item.centroCustos || undefined,
+            },
+          });
+          resultados.push(material);
+          novos++;
+        }
       } catch (e: any) {
         const erroMsg = `Erro ao salvar ${item.codigoItem}: ${e.message}`;
         console.error(`[Import] ${erroMsg}`);
@@ -344,13 +383,15 @@ app.post("/materiais/import", async (req, res) => {
       }
     }
 
-    console.log(`[Import] Importados ${resultados.length} de ${itens.length} itens`);
+    console.log(`[Import] Importados ${resultados.length} de ${itens.length} itens (${substituidos} substituídos, ${novos} novos)`);
     if (erros.length > 0) {
       console.error(`[Import] ${erros.length} erros durante importação`);
     }
 
     res.json({ 
-      quantidadeImportada: resultados.length, 
+      quantidadeImportada: resultados.length,
+      substituidos,
+      novos,
       materiais: resultados,
       erros: erros.length > 0 ? erros : undefined
     });
