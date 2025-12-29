@@ -857,7 +857,8 @@ app.get("/medicoes", async (_req, res) => {
 });
 
 // Limpar todos os dados (materiais e medições) - CUIDADO: Esta ação é irreversível!
-app.delete("/materiais/limpar-tudo", async (_req, res) => {
+// Usando POST ao invés de DELETE para evitar problemas com alguns serviços de hospedagem
+app.post("/materiais/limpar-tudo", async (_req, res) => {
   try {
     // eslint-disable-next-line no-console
     console.log("[Limpar] Iniciando limpeza de dados...");
