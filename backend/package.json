@@ -1,31 +1,11 @@
 {
-  "name": "controle-materiais-backend",
-  "version": "1.0.0",
-  "main": "dist/index.js",
-  "license": "MIT",
-  "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "prebuild": "node -e \"require('child_process').execSync('node node_modules/prisma/build/index.js generate', {stdio: 'inherit'})\"",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "prisma:migrate": "prisma migrate dev",
-    "prisma:generate": "prisma generate"
-  },
   "dependencies": {
-    "@prisma/client": "^5.22.0",
-    "axios": "^1.7.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.0",
-    "express": "^4.19.0",
-    "helmet": "^7.0.0",
-    "multer": "^2.0.2",
-    "prisma": "^5.22.0",
-    "xlsx": "^0.18.5"
+    "@prisma/client": "^7.2.0",
+    "bcryptjs": "^3.0.3",
+    "jsonwebtoken": "^9.0.3"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/multer": "^2.0.0",
-    "ts-node-dev": "^2.0.0",
-    "typescript": "^5.5.0"
+    "@types/bcryptjs": "^3.0.0",
+    "@types/jsonwebtoken": "^9.0.10"
   }
 }
