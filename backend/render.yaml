@@ -5,8 +5,8 @@ services:
     region: virginia
     plan: free
     rootDir: backend
-    buildCommand: npm install
-    startCommand: node dist/index.js
+    buildCommand: npm install && npm run build
+    startCommand: node start.js
     envVars:
       - key: DATABASE_URL
         sync: false
