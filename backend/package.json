@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "type": "commonjs",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node start.js",
     "build": "prisma generate && echo 'Build já está em dist/'",
     "postinstall": "prisma generate",
     "dev": "node dist/index.js"
