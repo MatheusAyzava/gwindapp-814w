@@ -197,10 +197,15 @@ app.put("/materiais/:id", async (req, res) => {
         if (Object.keys(dados).length === 0) {
             return res.status(400).json({ error: "Nenhum campo para atualizar." });
         }
+        
+        console.log(`[PUT /materiais/${id}] Atualizando material com dados:`, dados);
+        
         const material = await prisma.material.update({
             where: { id },
             data: dados,
         });
+        
+        console.log(`[PUT /materiais/${id}] ✅ Material atualizado:`, material);
         res.json(material);
     }
     catch (e) {
