@@ -239,8 +239,22 @@ async function buscarMedicoesDoSmartsheet() {
     // Mapear todas as colunas necessárias
     const colDia = findCol((t) => t.startsWith("dia"));
     const colSemana = findCol((t) => t.startsWith("sema"));
-    const colHoraEntrada = findCol((t) => t.includes("hora de entr") || t.includes("01 - hora in"));
-    const colHoraSaida = findCol((t) => t.includes("hora de sa") || t.includes("hora final") || t.includes("01 - hora f"));
+    const colHoraEntrada = findCol((t) => {
+        const lower = t.toLowerCase();
+        return lower.includes("hora de entr") || 
+               lower.includes("01 - hora in") || 
+               lower.includes("hora inicio") ||
+               lower.includes("hora início") ||
+               lower.startsWith("01 - hora");
+    });
+    const colHoraSaida = findCol((t) => {
+        const lower = t.toLowerCase();
+        return lower.includes("hora de sa") || 
+               lower.includes("hora final") || 
+               lower.includes("01 - hora f") ||
+               lower.includes("hora fim") ||
+               (lower.includes("final") && lower.includes("hora"));
+    });
     const colCliente = findCol((t) => t === "cliente");
     const colProjeto = findCol((t) => t === "projeto");
     const colEscala = findCol((t) => t === "escala");
@@ -257,6 +271,22 @@ async function buscarMedicoesDoSmartsheet() {
     const colTipoHora = findCol((t) => t.includes("tipo de hora") || t.includes("tipo hora"));
     const colQtdEventos = findCol((t) => t.includes("qtde de eventos") || t.includes("quantidade de eventos"));
     const colEtapaProcesso = findCol((t) => t.includes("etapa de processo") || t.includes("etapa processo") || t.includes("descrição de tarefas"));
+    // Função para formatar hora no formato HH:MM
+    const formatarHora = (hora) => {
+        if (!hora) return null;
+        const str = String(hora).trim();
+        // Remover espaços e caracteres especiais
+        const limpa = str.replace(/\s+/g, "").replace(/[^\d:]/g, "");
+        // Tentar parsear formato HH:MM ou H:MM
+        const partes = limpa.split(":");
+        if (partes.length >= 2) {
+            const horas = String(Number(partes[0]) || 0).padStart(2, "0");
+            const minutos = String(Number(partes[1]) || 0).padStart(2, "0");
+            return `${horas}:${minutos}`;
+        }
+        // Se não conseguir parsear, retornar original
+        return str;
+    };
     const buscaValor = (row, colId) => {
         if (!colId) return null;
         const cell = row.cells.find((c) => c.columnId === colId);
@@ -280,11 +310,20 @@ async function buscarMedicoesDoSmartsheet() {
             return null;
         }
         const dia = buscaValor(row, colDia?.id);
-        const horaInicio = buscaValor(row, colHoraEntrada?.id);
-        const horaFim = buscaValor(row, colHoraSaida?.id);
+        const horaInicioRaw = buscaValor(row, colHoraEntrada?.id);
+        const horaFimRaw = buscaValor(row, colHoraSaida?.id);
+        const horaInicio = formatarHora(horaInicioRaw);
+        const horaFim = formatarHora(horaFimRaw);
         // Se não tem pelo menos dia ou horas, pular
         if (!dia && !horaInicio) {
             return null;
+        }
+        // Log para debug se horas não foram encontradas
+        if (!horaInicio && colHoraEntrada) {
+            console.warn(`[Smartsheet] ⚠️ Hora início não encontrada na linha ${row.id || index}. Coluna encontrada: ${colHoraEntrada.title} (ID: ${colHoraEntrada.id})`);
+        }
+        if (!horaFim && colHoraSaida) {
+            console.warn(`[Smartsheet] ⚠️ Hora fim não encontrada na linha ${row.id || index}. Coluna encontrada: ${colHoraSaida.title} (ID: ${colHoraSaida.id})`);
         }
         // Converter data se necessário
         let diaFormatado = null;
@@ -323,8 +362,8 @@ async function buscarMedicoesDoSmartsheet() {
             equipe: buscaValor(row, colEquipe?.id),
             tipoHora: buscaValor(row, colTipoHora?.id),
             quantidadeEventos: buscaValor(row, colQtdEventos?.id) ? Number(buscaValor(row, colQtdEventos.id)) : null,
-            horaInicio: horaInicio ? String(horaInicio) : null,
-            horaFim: horaFim ? String(horaFim) : null,
+            horaInicio: horaInicio,
+            horaFim: horaFim,
             tipoDano: null,
             danoCodigo: null,
             larguraDanoMm: null,
