@@ -6,7 +6,10 @@
     "start": "node start.js",
     "build": "prisma generate && echo 'Build já está em dist/'",
     "postinstall": "prisma generate",
-    "dev": "node dist/index.js"
+    "dev": "node dist/index.js",
+    "migrate": "prisma migrate deploy",
+    "migrate:dev": "prisma migrate dev",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@prisma/client": "^6.1.0",
