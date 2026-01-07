@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.importarMateriaisDoSmartsheet = importarMateriaisDoSmartsheet;
 exports.registrarMedicaoNoSmartsheet = registrarMedicaoNoSmartsheet;
+exports.buscarMedicoesDoSmartsheet = buscarMedicoesDoSmartsheet;
 const axios_1 = __importDefault(require("axios"));
 const SMARTSHEET_TOKEN = process.env.SMARTSHEET_TOKEN;
 const SHEET_MATERIAIS = process.env.SMARTSHEET_SHEET_MATERIAIS;
