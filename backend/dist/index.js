@@ -782,25 +782,7 @@ app.post("/medicoes", async (req, res) => {
     });
     res.status(201).json(medicao);
 });
-// Listar medições (visão tipo grid)
-app.get("/medicoes", async (_req, res) => {
-    try {
-        const medicoes = await prisma.medicao.findMany({
-            include: { material: true },
-            orderBy: { id: "desc" },
-            take: 500, // limitar para não pesar; depois podemos paginar
-        });
-        res.json(medicoes);
-    }
-    catch (e) {
-        console.error("[Medicoes] Erro ao listar medições:", e?.message);
-        res.status(503).json({
-            error: "Erro ao acessar o banco para listar medições.",
-            detalhes: e?.message,
-        });
-    }
-});
-// Buscar todas as medições diretamente do Smartsheet
+// Buscar todas as medições diretamente do Smartsheet (DEVE VIR ANTES de /medicoes)
 app.get("/medicoes/smartsheet", async (_req, res) => {
     try {
         const medicoes = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
