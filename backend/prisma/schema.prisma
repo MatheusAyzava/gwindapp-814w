@@ -1,0 +1,103 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Material {
+  id                Int      @id @default(autoincrement())
+  codigoItem        String   @unique
+  descricao         String
+  unidade           String
+  estoqueInicial    Float    @default(0)
+  estoqueAtual      Float    @default(0)
+  centroCustos      String?
+  codigoEstoque     String?
+  codigoProjeto     String?
+  confirmado        Float?
+  descricaoEstoque  String?
+  descricaoProjeto  String?
+  disponivel        Float?
+  pedido            Float?
+  precoItem         Float?
+  total             Float?
+  medicoes          Medicao[]
+}
+
+model Medicao {
+  id                  Int       @id @default(autoincrement())
+  materialId          Int
+  data                DateTime  @default(now())
+  projeto             String
+  torre               String?
+  quantidadeConsumida Float
+  usuarioId           Int?
+  origem              String    @default("mobile")
+  cliente             String?
+  comprimentoDanoMm   Float?
+  danoCodigo          String?
+  dia                 DateTime?
+  equipe              String?
+  escala              String?
+  etapaLixamento      String?
+  etapaProcesso       String?
+  gelCatalisadorPeso  Float?
+  gelLote             String?
+  gelPeso             Float?
+  gelTipo             String?
+  gelValidade         String?
+  horaFim             String?
+  horaInicio          String?
+  larguraDanoMm       Float?
+  massaCatalisador    String?
+  massaLote           String?
+  massaQuantidade     Float?
+  massaTipo           String?
+  massaValidade       String?
+  nomesTecnicos       String?
+  nucleoEspessuraMm   Float?
+  nucleoTipo          String?
+  pa                  String?
+  plataforma          String?
+  puCatalisadorPeso   Float?
+  puLote              String?
+  puMassaPeso         Float?
+  puTipo              String?
+  puValidade          String?
+  quantidadeEventos   Int?
+  quantidadeTecnicos  Int?
+  resinaCatalisador   String?
+  resinaLote          String?
+  resinaQuantidade    Float?
+  resinaTipo          String?
+  resinaValidade      String?
+  retrabalho          Boolean?
+  semana              String?
+  supervisor          String?
+  tecnicoLider        String?
+  tipoAcesso          String?
+  tipoDano            String?
+  tipoHora            String?
+  tipoIntervalo       String?
+  material            Material  @relation(fields: [materialId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  usuario             Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+
+  @@index([materialId])
+  @@index([usuarioId])
+}
+
+model Usuario {
+  id        Int       @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senhaHash String
+  perfil    String
+  medicoes  Medicao[]
+}
+
