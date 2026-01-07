@@ -225,7 +225,7 @@ app.put("/materiais/:id", async (req, res) => {
             console.log(`[PUT /materiais/${id}] Verificando duplicata com codigoProjeto:`, codigoProjetoParaVerificar);
             
             // Construir where clause dinamicamente
-            const whereClause: any = {
+            const whereClause = {
                 codigoItem: dados.codigoItem,
                 NOT: { id: id },
             };
