@@ -6,13 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model Material {
   id                Int      @id @default(autoincrement())
-  codigoItem        String   @unique
+  codigoItem        String
   descricao         String
   unidade           String
   estoqueInicial    Float    @default(0)
@@ -28,6 +28,8 @@ model Material {
   precoItem         Float?
   total             Float?
   medicoes          Medicao[]
+
+  @@unique([codigoItem, codigoProjeto])
 }
 
 model Medicao {
