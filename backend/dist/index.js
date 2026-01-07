@@ -179,6 +179,8 @@ app.put("/materiais/:id", async (req, res) => {
             return res.status(400).json({ error: "ID inválido." });
         }
         const dados = {};
+        if (typeof req.body?.codigoItem === "string" && req.body.codigoItem.trim())
+            dados.codigoItem = req.body.codigoItem.trim();
         if (typeof req.body?.descricao === "string")
             dados.descricao = req.body.descricao;
         if (typeof req.body?.unidade === "string")
