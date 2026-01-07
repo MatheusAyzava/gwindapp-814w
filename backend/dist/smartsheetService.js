@@ -228,3 +228,124 @@ async function registrarMedicaoNoSmartsheet(dados) {
         },
     });
 }
+// Busca todas as medições diretamente do Smartsheet
+async function buscarMedicoesDoSmartsheet() {
+    if (!SMARTSHEET_TOKEN || !SHEET_MEDICOES) {
+        throw new Error("SMARTSHEET_TOKEN ou SHEET_MEDICOES não configurados.");
+    }
+    const sheet = await getSheet(SHEET_MEDICOES);
+    const findCol = (matcher) => sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+    // Mapear todas as colunas necessárias
+    const colDia = findCol((t) => t.startsWith("dia"));
+    const colSemana = findCol((t) => t.startsWith("sema"));
+    const colHoraEntrada = findCol((t) => t.includes("hora de entr") || t.includes("01 - hora in"));
+    const colHoraSaida = findCol((t) => t.includes("hora de sa") || t.includes("hora final") || t.includes("01 - hora f"));
+    const colCliente = findCol((t) => t === "cliente");
+    const colProjeto = findCol((t) => t === "projeto");
+    const colEscala = findCol((t) => t === "escala");
+    const colTecnicoLider = findCol((t) => t.includes("técnico líder"));
+    const colQtdTec = findCol((t) => (t.includes("qt") && t.includes("tec")) || t.includes("qtde téc"));
+    const colNomesTec = findCol((t) => t.includes("nome dos técnicos"));
+    const colSupervisor = findCol((t) => t === "supervisor");
+    const colTipoIntervalo = findCol((t) => t.includes("tipo de intervalo") || t.includes("tipo intervalo"));
+    const colTipoAcesso = findCol((t) => t.includes("tipo de acesso") || t.includes("tipo acesso"));
+    const colPa = findCol((t) => t === "pá" || t.startsWith("pá"));
+    const colTorre = findCol((t) => t.includes("wtg") || t.includes("torre"));
+    const colPlataforma = findCol((t) => t === "plataforma");
+    const colEquipe = findCol((t) => t === "equipe");
+    const colTipoHora = findCol((t) => t.includes("tipo de hora") || t.includes("tipo hora"));
+    const colQtdEventos = findCol((t) => t.includes("qtde de eventos") || t.includes("quantidade de eventos"));
+    const colEtapaProcesso = findCol((t) => t.includes("etapa de processo") || t.includes("etapa processo") || t.includes("descrição de tarefas"));
+    const buscaValor = (row, colId) => {
+        if (!colId) return null;
+        const cell = row.cells.find((c) => c.columnId === colId);
+        if (!cell) return null;
+        // Priorizar objectValue para MULTI_PICKLIST, depois value, depois displayValue
+        if (cell.objectValue) {
+            if (cell.objectValue.values && Array.isArray(cell.objectValue.values)) {
+                return cell.objectValue.values.join(", ");
+            }
+            return cell.objectValue;
+        }
+        return cell.value ?? cell.displayValue ?? null;
+    };
+    const medicoes = sheet.rows
+        .map((row, index) => {
+        // Pular linhas vazias (sem dados relevantes)
+        const temDados = colDia && buscaValor(row, colDia.id) ||
+            colProjeto && buscaValor(row, colProjeto.id) ||
+            colHoraEntrada && buscaValor(row, colHoraEntrada.id);
+        if (!temDados) {
+            return null;
+        }
+        const dia = buscaValor(row, colDia?.id);
+        const horaInicio = buscaValor(row, colHoraEntrada?.id);
+        const horaFim = buscaValor(row, colHoraSaida?.id);
+        // Se não tem pelo menos dia ou horas, pular
+        if (!dia && !horaInicio) {
+            return null;
+        }
+        // Converter data se necessário
+        let diaFormatado = null;
+        if (dia) {
+            if (typeof dia === "string") {
+                // Tentar parsear data no formato brasileiro DD/MM/YYYY
+                const partes = dia.split("/");
+                if (partes.length === 3) {
+                    diaFormatado = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                }
+                else {
+                    diaFormatado = dia;
+                }
+            }
+            else if (dia instanceof Date) {
+                diaFormatado = dia.toISOString().substring(0, 10);
+            }
+        }
+        return {
+            id: row.id || index,
+            data: new Date().toISOString(),
+            dia: diaFormatado,
+            semana: buscaValor(row, colSemana?.id),
+            cliente: buscaValor(row, colCliente?.id),
+            projeto: buscaValor(row, colProjeto?.id),
+            escala: buscaValor(row, colEscala?.id),
+            tecnicoLider: buscaValor(row, colTecnicoLider?.id),
+            quantidadeTecnicos: buscaValor(row, colQtdTec?.id) ? Number(buscaValor(row, colQtdTec.id)) : null,
+            nomesTecnicos: buscaValor(row, colNomesTec?.id),
+            supervisor: buscaValor(row, colSupervisor?.id),
+            tipoIntervalo: buscaValor(row, colTipoIntervalo?.id),
+            tipoAcesso: buscaValor(row, colTipoAcesso?.id),
+            pa: buscaValor(row, colPa?.id),
+            torre: buscaValor(row, colTorre?.id),
+            plataforma: buscaValor(row, colPlataforma?.id),
+            equipe: buscaValor(row, colEquipe?.id),
+            tipoHora: buscaValor(row, colTipoHora?.id),
+            quantidadeEventos: buscaValor(row, colQtdEventos?.id) ? Number(buscaValor(row, colQtdEventos.id)) : null,
+            horaInicio: horaInicio ? String(horaInicio) : null,
+            horaFim: horaFim ? String(horaFim) : null,
+            tipoDano: null,
+            danoCodigo: null,
+            larguraDanoMm: null,
+            comprimentoDanoMm: null,
+            etapaProcesso: buscaValor(row, colEtapaProcesso?.id),
+            etapaLixamento: null,
+            resinaTipo: null,
+            resinaQuantidade: null,
+            massaTipo: null,
+            massaQuantidade: null,
+            nucleoTipo: null,
+            nucleoEspessuraMm: null,
+            puTipo: null,
+            puMassaPeso: null,
+            gelTipo: null,
+            gelPeso: null,
+            retrabalho: null,
+            material: null,
+            quantidadeConsumida: 0,
+        };
+    })
+        .filter((m) => m !== null);
+    return medicoes;
+}
+exports.buscarMedicoesDoSmartsheet = buscarMedicoesDoSmartsheet;

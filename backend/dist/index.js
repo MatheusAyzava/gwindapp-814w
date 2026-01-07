@@ -800,6 +800,21 @@ app.get("/medicoes", async (_req, res) => {
         });
     }
 });
+// Buscar todas as medições diretamente do Smartsheet
+app.get("/medicoes/smartsheet", async (_req, res) => {
+    try {
+        const medicoes = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
+        console.log(`[Medicoes/Smartsheet] ✅ ${medicoes.length} medições encontradas no Smartsheet`);
+        res.json(medicoes);
+    }
+    catch (e) {
+        console.error("[Medicoes/Smartsheet] Erro ao buscar medições do Smartsheet:", e?.message);
+        res.status(503).json({
+            error: "Erro ao buscar medições do Smartsheet.",
+            detalhes: e?.message,
+        });
+    }
+});
 // Limpar todos os dados (materiais e medições) - CUIDADO: Esta ação é irreversível!
 app.delete("/materiais/limpar-tudo", async (_req, res) => {
     try {
