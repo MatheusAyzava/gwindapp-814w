@@ -179,8 +179,16 @@ app.put("/materiais/:id", async (req, res) => {
             return res.status(400).json({ error: "ID inválido." });
         }
         const dados = {};
-        if (typeof req.body?.codigoItem === "string" && req.body.codigoItem.trim())
-            dados.codigoItem = req.body.codigoItem.trim();
+        // Sempre incluir codigoItem se estiver presente no body, mesmo que vazio (para permitir atualização)
+        if (req.body?.codigoItem !== undefined) {
+            const codigoItemTrimmed = typeof req.body.codigoItem === "string" ? req.body.codigoItem.trim() : String(req.body.codigoItem).trim();
+            if (codigoItemTrimmed) {
+                dados.codigoItem = codigoItemTrimmed;
+                console.log(`[PUT /materiais/${id}] codigoItem recebido no body:`, req.body.codigoItem, "→ processado:", dados.codigoItem);
+            } else {
+                console.log(`[PUT /materiais/${id}] ⚠️ codigoItem vazio ou inválido, ignorando`);
+            }
+        }
         if (typeof req.body?.descricao === "string")
             dados.descricao = req.body.descricao;
         if (typeof req.body?.unidade === "string")
