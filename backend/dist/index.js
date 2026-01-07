@@ -200,6 +200,25 @@ app.put("/materiais/:id", async (req, res) => {
         
         console.log(`[PUT /materiais/${id}] Atualizando material com dados:`, dados);
         
+        // Se estiver atualizando codigoItem, verificar se já existe outro material com esse código
+        if (dados.codigoItem) {
+            const materialExistente = await prisma.material.findFirst({
+                where: {
+                    codigoItem: dados.codigoItem,
+                    codigoProjeto: dados.codigoProjeto !== undefined ? dados.codigoProjeto : undefined,
+                    NOT: { id: id }, // Excluir o próprio material
+                },
+            });
+            
+            if (materialExistente) {
+                console.log(`[PUT /materiais/${id}] ❌ Já existe material com código ${dados.codigoItem}`);
+                return res.status(400).json({ 
+                    error: `Já existe outro material com o código "${dados.codigoItem}". Escolha um código diferente.`,
+                    detalhes: `Material ID ${materialExistente.id} já usa este código.`
+                });
+            }
+        }
+        
         const material = await prisma.material.update({
             where: { id },
             data: dados,
@@ -209,7 +228,18 @@ app.put("/materiais/:id", async (req, res) => {
         res.json(material);
     }
     catch (e) {
-        console.error("[Materiais] Erro ao atualizar material:", e?.message);
+        console.error("[PUT /materiais/:id] ❌ Erro:", e);
+        console.error("[PUT /materiais/:id] ❌ Stack:", e?.stack);
+        console.error("[PUT /materiais/:id] ❌ Code:", e?.code);
+        
+        // Verificar se é erro de constraint única
+        if (e?.code === 'P2002' || e?.message?.includes('Unique constraint')) {
+            return res.status(400).json({ 
+                error: "Já existe outro material com este código. Escolha um código diferente.",
+                detalhes: e?.message 
+            });
+        }
+        
         res.status(500).json({ error: "Erro ao atualizar material.", detalhes: e?.message });
     }
 });
