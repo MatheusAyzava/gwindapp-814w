@@ -111,37 +111,65 @@ app.get("/materiais", async (_req, res) => {
 });
 // Criar/atualizar material
 app.post("/materiais", async (req, res) => {
-    const { codigoItem, descricao, unidade, estoqueInicial } = req.body;
-    if (!codigoItem || !descricao || !unidade) {
-        return res.status(400).json({ error: "Dados do material incompletos." });
-    }
-    const valorEstoqueInicial = Number(estoqueInicial ?? 0);
-    // Se codigoProjeto não for fornecido, usa null (permite ter materiais sem projeto)
-    const codigoProjetoValue = req.body.codigoProjeto || null;
-    const material = await prisma.material.upsert({
-        where: {
-            codigoItem_codigoProjeto: {
-                codigoItem,
+    try {
+        console.log("[POST /materiais] Requisição recebida:", req.body);
+        const { codigoItem, descricao, unidade, estoqueInicial } = req.body;
+        if (!codigoItem || !descricao || !unidade) {
+            console.log("[POST /materiais] ❌ Dados incompletos");
+            return res.status(400).json({ error: "Dados do material incompletos." });
+        }
+        const valorEstoqueInicial = Number(estoqueInicial ?? 0);
+        // Se codigoProjeto não for fornecido, usa null (permite ter materiais sem projeto)
+        const codigoProjetoValue = req.body.codigoProjeto || null;
+        
+        console.log("[POST /materiais] Buscando material existente...");
+        // Buscar material existente por codigoItem e codigoProjeto (se fornecido)
+        const materialExistente = await prisma.material.findFirst({
+            where: {
+                codigoItem: codigoItem,
                 codigoProjeto: codigoProjetoValue,
             },
-        },
-        update: {
-            descricao,
-            unidade,
-            estoqueInicial: valorEstoqueInicial,
-            estoqueAtual: valorEstoqueInicial,
-            codigoProjeto: codigoProjetoValue,
-        },
-        create: {
-            codigoItem,
-            descricao,
-            unidade,
-            estoqueInicial: valorEstoqueInicial,
-            estoqueAtual: valorEstoqueInicial,
-            codigoProjeto: codigoProjetoValue,
-        },
-    });
-    res.json(material);
+        });
+        
+        let material;
+        if (materialExistente) {
+            console.log("[POST /materiais] Material encontrado, atualizando...");
+            material = await prisma.material.update({
+                where: { id: materialExistente.id },
+                data: {
+                    descricao,
+                    unidade,
+                    estoqueInicial: valorEstoqueInicial,
+                    estoqueAtual: valorEstoqueInicial,
+                    codigoProjeto: codigoProjetoValue,
+                },
+            });
+            console.log("[POST /materiais] ✅ Material atualizado:", material.id);
+        } else {
+            console.log("[POST /materiais] Material não encontrado, criando novo...");
+            material = await prisma.material.create({
+                data: {
+                    codigoItem,
+                    descricao,
+                    unidade,
+                    estoqueInicial: valorEstoqueInicial,
+                    estoqueAtual: valorEstoqueInicial,
+                    codigoProjeto: codigoProjetoValue,
+                },
+            });
+            console.log("[POST /materiais] ✅ Material criado:", material.id);
+        }
+        
+        res.json(material);
+    } catch (error) {
+        console.error("[POST /materiais] ❌ Erro:", error);
+        console.error("[POST /materiais] ❌ Stack:", error?.stack);
+        res.status(500).json({ 
+            error: "Erro ao salvar material.", 
+            detalhes: error?.message,
+            code: error?.code 
+        });
+    }
 });
 // Atualizar material/estoque por ID (usado pela tela de Estoque)
 app.put("/materiais/:id", async (req, res) => {
