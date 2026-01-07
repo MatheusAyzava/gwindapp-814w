@@ -11,13 +11,13 @@ O backend de materiais precisa ser deployado no Render para funcionar. Atualment
 
 1. Acesse: https://dashboard.render.com/
 2. Clique em **"+ New"** → **"Web Service"**
-3. Conecte seu repositório GitHub (se ainda não conectou)
+3. **Selecione o repositório**: `gwindapp-814w` (o mesmo repositório que contém o backend)
 4. Configure o serviço:
    - **Name**: `gwindapp-materiais-backend`
    - **Environment**: `Node`
    - **Region**: `Virginia` (mesma região dos outros serviços)
    - **Branch**: `main` (ou a branch que você usa)
-   - **Root Directory**: `backend` ⚠️ **IMPORTANTE!**
+   - **Root Directory**: `backend` ⚠️ **IMPORTANTE!** (isso faz o Render olhar dentro da pasta `backend/` do repositório)
    - **Build Command**: `npm install` (o código já está compilado em `dist/`)
    - **Start Command**: `node dist/index.js`
    - **Plan**: `Free`
