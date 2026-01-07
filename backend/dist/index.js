@@ -248,13 +248,26 @@ app.put("/materiais/:id", async (req, res) => {
         console.log(`[PUT /materiais/${id}] Dados que serão enviados ao Prisma:`, JSON.stringify(dados, null, 2));
         console.log(`[PUT /materiais/${id}] Verificando se codigoItem está em dados:`, 'codigoItem' in dados, dados.codigoItem);
         
+        // Buscar material atual antes da atualização para comparar
+        const materialAntes = await prisma.material.findUnique({
+            where: { id },
+            select: { codigoItem: true, codigoProjeto: true },
+        });
+        console.log(`[PUT /materiais/${id}] Material antes da atualização:`, materialAntes);
+        
         const material = await prisma.material.update({
             where: { id },
             data: dados,
         });
         
         console.log(`[PUT /materiais/${id}] ✅ Material atualizado pelo Prisma:`, JSON.stringify(material, null, 2));
-        console.log(`[PUT /materiais/${id}] Código retornado:`, material.codigoItem);
+        console.log(`[PUT /materiais/${id}] Código antes: ${materialAntes?.codigoItem} → Código depois: ${material.codigoItem}`);
+        
+        // Verificar se o codigoItem foi realmente atualizado
+        if (dados.codigoItem && material.codigoItem !== dados.codigoItem) {
+            console.error(`[PUT /materiais/${id}] ⚠️ ATENÇÃO: codigoItem não foi atualizado! Esperado: ${dados.codigoItem}, Recebido: ${material.codigoItem}`);
+        }
+        
         res.json(material);
     }
     catch (e) {
