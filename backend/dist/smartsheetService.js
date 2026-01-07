@@ -349,4 +349,3 @@ async function buscarMedicoesDoSmartsheet() {
         .filter((m) => m !== null);
     return medicoes;
 }
-exports.buscarMedicoesDoSmartsheet = buscarMedicoesDoSmartsheet;
