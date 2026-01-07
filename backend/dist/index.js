@@ -202,21 +202,47 @@ app.put("/materiais/:id", async (req, res) => {
         
         // Se estiver atualizando codigoItem, verificar se já existe outro material com esse código
         if (dados.codigoItem) {
+            console.log(`[PUT /materiais/${id}] Verificando se código ${dados.codigoItem} já existe...`);
+            
+            // Buscar material atual para pegar o codigoProjeto atual se não estiver sendo atualizado
+            const materialAtual = await prisma.material.findUnique({
+                where: { id },
+                select: { codigoProjeto: true, codigoItem: true },
+            });
+            
+            const codigoProjetoParaVerificar = dados.codigoProjeto !== undefined 
+                ? dados.codigoProjeto 
+                : materialAtual?.codigoProjeto;
+            
+            console.log(`[PUT /materiais/${id}] Verificando duplicata com codigoProjeto:`, codigoProjetoParaVerificar);
+            
+            // Construir where clause dinamicamente
+            const whereClause: any = {
+                codigoItem: dados.codigoItem,
+                NOT: { id: id },
+            };
+            
+            // Se codigoProjeto está sendo atualizado ou já existe, incluir na verificação
+            if (codigoProjetoParaVerificar !== undefined) {
+                whereClause.codigoProjeto = codigoProjetoParaVerificar;
+            } else {
+                // Se não tem projeto, verificar materiais sem projeto também
+                whereClause.codigoProjeto = null;
+            }
+            
             const materialExistente = await prisma.material.findFirst({
-                where: {
-                    codigoItem: dados.codigoItem,
-                    codigoProjeto: dados.codigoProjeto !== undefined ? dados.codigoProjeto : undefined,
-                    NOT: { id: id }, // Excluir o próprio material
-                },
+                where: whereClause,
             });
             
             if (materialExistente) {
-                console.log(`[PUT /materiais/${id}] ❌ Já existe material com código ${dados.codigoItem}`);
+                console.log(`[PUT /materiais/${id}] ❌ Já existe material com código ${dados.codigoItem} (ID: ${materialExistente.id})`);
                 return res.status(400).json({ 
                     error: `Já existe outro material com o código "${dados.codigoItem}". Escolha um código diferente.`,
                     detalhes: `Material ID ${materialExistente.id} já usa este código.`
                 });
             }
+            
+            console.log(`[PUT /materiais/${id}] ✅ Código ${dados.codigoItem} está disponível`);
         }
         
         const material = await prisma.material.update({
