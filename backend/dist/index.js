@@ -797,6 +797,84 @@ app.get("/medicoes/smartsheet", async (_req, res) => {
         });
     }
 });
+// Listar todas as medições do banco de dados
+app.get("/medicoes", async (req, res) => {
+    try {
+        const { projeto, materialId, limit, offset } = req.query;
+        const where = {};
+        if (projeto) {
+            where.projeto = String(projeto);
+        }
+        if (materialId) {
+            where.materialId = Number(materialId);
+        }
+        const medicoes = await prisma.medicao.findMany({
+            where,
+            include: {
+                material: {
+                    select: {
+                        id: true,
+                        codigoItem: true,
+                        descricao: true,
+                        unidade: true,
+                    },
+                },
+            },
+            orderBy: { data: "desc" },
+            take: limit ? Number(limit) : undefined,
+            skip: offset ? Number(offset) : undefined,
+        });
+        res.json(medicoes);
+    }
+    catch (e) {
+        console.error("[Medicoes] Erro ao listar medições:", e?.message);
+        res.status(503).json({
+            error: "Erro ao listar medições.",
+            detalhes: e?.message,
+        });
+    }
+});
+// Listar projetos e clientes únicos das medições
+app.get("/projetos-clientes", async (req, res) => {
+    try {
+        const { tipo } = req.query;
+        if (tipo === "projeto") {
+            // Buscar projetos únicos das medições
+            const medicoes = await prisma.medicao.findMany({
+                select: { projeto: true },
+                distinct: ["projeto"],
+            });
+            const projetos = medicoes
+                .map((m) => m.projeto)
+                .filter((p) => p && p.trim() !== "")
+                .map((nome, index) => ({ id: index + 1, nome: nome.trim() }));
+            res.json(projetos);
+        }
+        else if (tipo === "cliente") {
+            // Buscar clientes únicos das medições
+            const medicoes = await prisma.medicao.findMany({
+                where: { cliente: { not: null } },
+                select: { cliente: true },
+                distinct: ["cliente"],
+            });
+            const clientes = medicoes
+                .map((m) => m.cliente)
+                .filter((c) => c && c.trim() !== "")
+                .map((nome, index) => ({ id: index + 1, nome: nome.trim() }));
+            res.json(clientes);
+        }
+        else {
+            res.status(400).json({ error: "Parâmetro 'tipo' deve ser 'projeto' ou 'cliente'." });
+        }
+    }
+    catch (e) {
+        console.error("[Projetos/Clientes] Erro ao listar:", e?.message);
+        res.status(503).json({
+            error: "Erro ao listar projetos/clientes.",
+            detalhes: e?.message,
+        });
+    }
+});
 // Limpar todos os dados (materiais e medições) - CUIDADO: Esta ação é irreversível!
 app.delete("/materiais/limpar-tudo", async (_req, res) => {
     try {
