@@ -245,12 +245,16 @@ app.put("/materiais/:id", async (req, res) => {
             console.log(`[PUT /materiais/${id}] ✅ Código ${dados.codigoItem} está disponível`);
         }
         
+        console.log(`[PUT /materiais/${id}] Dados que serão enviados ao Prisma:`, JSON.stringify(dados, null, 2));
+        console.log(`[PUT /materiais/${id}] Verificando se codigoItem está em dados:`, 'codigoItem' in dados, dados.codigoItem);
+        
         const material = await prisma.material.update({
             where: { id },
             data: dados,
         });
         
-        console.log(`[PUT /materiais/${id}] ✅ Material atualizado:`, material);
+        console.log(`[PUT /materiais/${id}] ✅ Material atualizado pelo Prisma:`, JSON.stringify(material, null, 2));
+        console.log(`[PUT /materiais/${id}] Código retornado:`, material.codigoItem);
         res.json(material);
     }
     catch (e) {
