@@ -427,21 +427,59 @@ async function buscarMedicoesDoSmartsheet() {
         
         // Para coluna "Dia", priorizar displayValue (pode ter formato DD/MM/YY já formatado)
         if (isColunaDia) {
-            // Tentar displayValue primeiro (pode ter formato DD/MM/YY já formatado)
-            if (cell.displayValue !== null && cell.displayValue !== undefined && typeof cell.displayValue === 'string' && cell.displayValue.trim()) {
-                return cell.displayValue.trim();
+            // Tentar TODOS os campos possíveis para encontrar o valor
+            // 1. displayValue primeiro (pode ter formato DD/MM/YY já formatado)
+            if (cell.displayValue !== null && cell.displayValue !== undefined) {
+                if (typeof cell.displayValue === 'string' && cell.displayValue.trim()) {
+                    return cell.displayValue.trim();
+                }
+                if (typeof cell.displayValue === 'number') {
+                    // Se for número, pode ser timestamp - converter
+                    let data = new Date(cell.displayValue);
+                    if (isNaN(data.getTime()) || data.getFullYear() < 1900) {
+                        const dataBase = new Date(1899, 11, 30);
+                        data = new Date(dataBase.getTime() + cell.displayValue * 24 * 60 * 60 * 1000);
+                    }
+                    if (!isNaN(data.getTime()) && data.getFullYear() >= 1900) {
+                        return data.toISOString().substring(0, 10);
+                    }
+                }
             }
-            // Depois tentar value
+            // 2. Tentar value
             if (cell.value !== null && cell.value !== undefined) {
                 if (typeof cell.value === 'string' && cell.value.trim()) {
                     return cell.value.trim();
                 }
+                if (typeof cell.value === 'number') {
+                    // Se for número, pode ser timestamp - converter
+                    let data = new Date(cell.value);
+                    if (isNaN(data.getTime()) || data.getFullYear() < 1900) {
+                        const dataBase = new Date(1899, 11, 30);
+                        data = new Date(dataBase.getTime() + cell.value * 24 * 60 * 60 * 1000);
+                    }
+                    if (!isNaN(data.getTime()) && data.getFullYear() >= 1900) {
+                        return data.toISOString().substring(0, 10);
+                    }
+                }
                 return cell.value;
             }
-            // Por último, tentar objectValue
+            // 3. Tentar objectValue
             if (cell.objectValue !== null && cell.objectValue !== undefined) {
                 if (typeof cell.objectValue === 'string' && cell.objectValue.trim()) {
                     return cell.objectValue.trim();
+                }
+                if (cell.objectValue instanceof Date) {
+                    return cell.objectValue.toISOString().substring(0, 10);
+                }
+                if (typeof cell.objectValue === 'number') {
+                    let data = new Date(cell.objectValue);
+                    if (isNaN(data.getTime()) || data.getFullYear() < 1900) {
+                        const dataBase = new Date(1899, 11, 30);
+                        data = new Date(dataBase.getTime() + cell.objectValue * 24 * 60 * 60 * 1000);
+                    }
+                    if (!isNaN(data.getTime()) && data.getFullYear() >= 1900) {
+                        return cell.objectValue.toISOString().substring(0, 10);
+                    }
                 }
                 return cell.objectValue;
             }
