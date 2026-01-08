@@ -600,11 +600,37 @@ async function buscarMedicoesDoSmartsheet() {
         if (dia) {
             if (typeof dia === "string") {
                 // Tentar parsear data no formato brasileiro DD/MM/YYYY ou DD/MM/YY
+                // OU formato americano MM/DD/YYYY ou MM/DD/YY (como vem do Smartsheet)
                 const partes = dia.split("/");
                 if (partes.length === 3) {
+                    // Verificar se é formato americano (MM/DD/YY) ou brasileiro (DD/MM/YY)
+                    // Se o primeiro número é > 12, provavelmente é formato brasileiro (DD/MM)
+                    // Se o segundo número é > 12, definitivamente é MM/DD
+                    const primeiro = parseInt(partes[0]);
+                    const segundo = parseInt(partes[1]);
+                    
+                    let diaNum, mesNum, anoStr;
+                    
+                    if (primeiro > 12) {
+                        // Formato brasileiro: DD/MM/YY
+                        diaNum = partes[0];
+                        mesNum = partes[1];
+                        anoStr = partes[2];
+                    } else if (segundo > 12) {
+                        // Formato americano: MM/DD/YY
+                        mesNum = partes[0];
+                        diaNum = partes[1];
+                        anoStr = partes[2];
+                    } else {
+                        // Ambíguo - assumir formato americano MM/DD/YY (padrão Smartsheet)
+                        mesNum = partes[0];
+                        diaNum = partes[1];
+                        anoStr = partes[2];
+                    }
+                    
                     // Se o ano tem 2 dígitos, assumir 20XX
-                    const ano = partes[2].length === 2 ? `20${partes[2]}` : partes[2];
-                    diaFormatado = `${ano}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                    const ano = anoStr.length === 2 ? `20${anoStr}` : anoStr;
+                    diaFormatado = `${ano}-${mesNum.padStart(2, '0')}-${diaNum.padStart(2, '0')}`;
                 }
                 // Tentar formato ISO YYYY-MM-DD
                 else if (dia.match(/^\d{4}-\d{2}-\d{2}/)) {
