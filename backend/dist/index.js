@@ -821,6 +821,106 @@ app.get("/smartsheet/status", async (_req, res) => {
         });
     }
 });
+// Endpoint de debug para verificar mapeamento de colunas
+app.get("/smartsheet/debug/colunas", async (_req, res) => {
+    try {
+        const sheet = await (0, smartsheetService_1.getSheet)(process.env.SMARTSHEET_SHEET_MEDICOES);
+        
+        const todasColunas = sheet.columns.map(col => ({
+            title: col.title,
+            id: col.id,
+            type: col.type,
+            index: col.index
+        }));
+        
+        // Tentar encontrar coluna de data usando a mesma lógica do código
+        const findCol = (matcher) => sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+        let colDia = findCol((t) => {
+            const lower = t.toLowerCase().trim();
+            return lower.startsWith("dia") || 
+                   lower === "data" ||
+                   lower.includes("data início") ||
+                   lower.includes("data inicio") ||
+                   lower.includes("data de início") ||
+                   lower.includes("data de inicio") ||
+                   lower.includes("01 - data") ||
+                   lower.includes("01-data") ||
+                   lower.includes("01 - data início") ||
+                   lower.includes("01 - data inicio") ||
+                   (lower.includes("01") && lower.includes("data")) ||
+                   (lower.includes("início") && !lower.includes("hora")) ||
+                   (lower.includes("inicio") && !lower.includes("hora")) ||
+                   lower.includes("date");
+        });
+        
+        // Se não encontrou, tentar por tipo
+        let colDiaPorTipo = null;
+        if (!colDia) {
+            colDiaPorTipo = sheet.columns.find(c => c.type === 'DATE' || c.type === 'DATETIME');
+        }
+        
+        // Se ainda não encontrou, buscar qualquer coluna com "data" ou "dia"
+        let colDiaPorBuscaAmpla = null;
+        if (!colDia && !colDiaPorTipo) {
+            const possiveis = sheet.columns.filter(c => {
+                const lower = c.title.toLowerCase();
+                return (lower.includes("data") || lower.includes("dia") || lower.includes("date")) && 
+                       !lower.includes("hora") && 
+                       !lower.includes("time");
+            });
+            if (possiveis.length > 0) {
+                colDiaPorBuscaAmpla = possiveis[0];
+            }
+        }
+        
+        // Verificar primeira linha para ver valores
+        let primeiraLinhaData = null;
+        if (sheet.rows.length > 0 && (colDia || colDiaPorTipo || colDiaPorBuscaAmpla)) {
+            const colFinal = colDia || colDiaPorTipo || colDiaPorBuscaAmpla;
+            const cell = sheet.rows[0].cells.find(c => c.columnId === colFinal.id);
+            if (cell) {
+                primeiraLinhaData = {
+                    value: cell.value,
+                    displayValue: cell.displayValue,
+                    objectValue: cell.objectValue,
+                    valueType: typeof cell.value
+                };
+            }
+        }
+        
+        res.json({
+            totalColunas: todasColunas.length,
+            todasColunas: todasColunas,
+            colunaDataEncontrada: colDia ? {
+                title: colDia.title,
+                id: colDia.id,
+                type: colDia.type,
+                metodo: "busca_por_nome"
+            } : null,
+            colunaDataPorTipo: colDiaPorTipo ? {
+                title: colDiaPorTipo.title,
+                id: colDiaPorTipo.id,
+                type: colDiaPorTipo.type,
+                metodo: "busca_por_tipo"
+            } : null,
+            colunaDataPorBuscaAmpla: colDiaPorBuscaAmpla ? {
+                title: colDiaPorBuscaAmpla.title,
+                id: colDiaPorBuscaAmpla.id,
+                type: colDiaPorBuscaAmpla.type,
+                metodo: "busca_ampla"
+            } : null,
+            primeiraLinhaData: primeiraLinhaData,
+            possiveisColunasData: todasColunas.filter(c => {
+                const lower = c.title.toLowerCase();
+                return lower.includes("data") || lower.includes("dia") || lower.includes("date");
+            })
+        });
+    } catch (e) {
+        console.error("[Smartsheet/Debug] Erro:", e);
+        res.status(500).json({ error: "Erro ao verificar colunas.", detalhes: e?.message });
+    }
+});
+
 app.get("/medicoes/smartsheet", async (_req, res) => {
     try {
         const medicoes = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
