@@ -533,6 +533,12 @@ async function buscarMedicoesDoSmartsheet() {
         if (!dia && !horaInicio) {
             return null;
         }
+        
+        // Log se tem horas mas não tem dia (primeiras 5 linhas)
+        if (horaInicio && !dia && index < 5) {
+            console.warn(`[Smartsheet] ⚠️ Linha ${index}: Tem hora (${horaInicio}) mas NÃO tem data. Coluna de data: ${colDia ? `"${colDia.title}" (Type: ${colDia.type})` : 'NÃO ENCONTRADA'}`);
+        }
+        
         // Log para debug se horas não foram encontradas
         if (!horaInicio && colHoraEntrada) {
             console.warn(`[Smartsheet] ⚠️ Hora início não encontrada na linha ${row.id || index}. Coluna encontrada: ${colHoraEntrada.title} (ID: ${colHoraEntrada.id})`);
