@@ -241,7 +241,9 @@ async function buscarMedicoesDoSmartsheet() {
     // Log: Listar TODAS as colunas disponíveis para debug
     console.log('[Smartsheet] 📋 Colunas disponíveis no Smartsheet:');
     sheet.columns.forEach((col, idx) => {
-        console.log(`  [${idx}] "${col.title}" (ID: ${col.id}, Type: ${col.type})`);
+        const lower = col.title.toLowerCase().trim();
+        const isDia = lower === "dia";
+        console.log(`  [${idx}] "${col.title}" (ID: ${col.id}, Type: ${col.type})${isDia ? ' ⭐ É A COLUNA DIA!' : ''}`);
     });
     
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
