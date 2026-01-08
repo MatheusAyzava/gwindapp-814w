@@ -246,9 +246,14 @@ async function buscarMedicoesDoSmartsheet() {
     
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     // Tentar encontrar a coluna de data de múltiplas formas
+    // IMPORTANTE: A coluna se chama "Dia" no Smartsheet e contém as datas
     let colDia = findCol((t) => {
         const lower = t.toLowerCase().trim();
-        // Tentar múltiplas variações, incluindo "01 - Data Início" que aparece na tabela
+        // Primeiro tentar "dia" exato (sem "data") - esta é a coluna principal
+        if (lower === "dia") {
+            return true;
+        }
+        // Depois tentar outras variações
         return lower.startsWith("dia") || 
                lower === "data" ||
                lower.includes("data início") ||
