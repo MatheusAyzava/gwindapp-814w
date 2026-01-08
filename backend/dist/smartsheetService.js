@@ -240,11 +240,23 @@ async function buscarMedicoesDoSmartsheet() {
     
     // Log: Listar TODAS as colunas disponíveis para debug
     console.log('[Smartsheet] 📋 Colunas disponíveis no Smartsheet:');
+    const colunasComDia = [];
     sheet.columns.forEach((col, idx) => {
         const lower = col.title.toLowerCase().trim();
+        // Verificar se o nome contém "dia" (com ou sem acentos, espaços, etc.)
+        if (lower.includes('dia') || lower === 'dia' || lower.includes('data')) {
+            colunasComDia.push({ title: col.title, id: col.id, type: col.type, index: idx });
+        }
         const isDia = lower === "dia";
         console.log(`  [${idx}] "${col.title}" (ID: ${col.id}, Type: ${col.type})${isDia ? ' ⭐ É A COLUNA DIA!' : ''}`);
     });
+    
+    // Log colunas que podem ser de data
+    if (colunasComDia.length > 0) {
+        console.log('[Smartsheet] 🔍 Colunas que podem ser de data/dia:', colunasComDia);
+    } else {
+        console.warn('[Smartsheet] ⚠️ NENHUMA coluna encontrada com "dia" ou "data" no nome!');
+    }
     
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     // Tentar encontrar a coluna de data de múltiplas formas
@@ -252,9 +264,24 @@ async function buscarMedicoesDoSmartsheet() {
     let colDia = null;
     
     // PRIMEIRO: tentar "Dia" exato (case-insensitive) - PRIORIDADE MÁXIMA
-    colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "dia");
+    colDia = sheet.columns.find(c => {
+        const lower = c.title.toLowerCase().trim();
+        return lower === "dia" || lower === '"dia"' || lower === "'dia'";
+    });
     if (colDia) {
         console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+    } else {
+        // Tentar busca mais flexível: qualquer coluna que contenha "dia" (mas não "dados", "diário", etc.)
+        const possiveisDia = sheet.columns.filter(c => {
+            const lower = c.title.toLowerCase().trim();
+            return (lower.includes('dia') && lower.length <= 5) || // "dia" com no máximo 5 caracteres
+                   (lower === 'dia') ||
+                   (lower.startsWith('dia ') && lower.length <= 10); // "dia " seguido de algo curto
+        });
+        if (possiveisDia.length > 0) {
+            colDia = possiveisDia[0];
+            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        }
     }
     
     // Segundo: tentar "Data" exato (case-insensitive) - apenas como fallback
