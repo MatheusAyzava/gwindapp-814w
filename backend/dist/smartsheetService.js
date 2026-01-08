@@ -379,39 +379,69 @@ async function buscarMedicoesDoSmartsheet() {
         const col = sheet.columns.find(c => c.id === colId);
         if (col && (col.type === 'DATE' || col.type === 'DATETIME')) {
             // Para colunas de data, o Smartsheet pode retornar o valor em diferentes formatos
-            if (cell.value) {
-                // Se for um número (timestamp do Excel), converter
+            if (cell.value !== null && cell.value !== undefined) {
+                // Se for um número (timestamp do Excel/Smartsheet), converter
                 if (typeof cell.value === 'number') {
-                    // Smartsheet usa epoch time em milissegundos para datas
-                    const data = new Date(cell.value);
-                    if (!isNaN(data.getTime())) {
+                    // Smartsheet pode usar diferentes formatos de timestamp
+                    // Tentar como milissegundos primeiro
+                    let data = new Date(cell.value);
+                    // Se não funcionar ou data muito antiga, tentar como dias desde 1900 (formato Excel)
+                    if (isNaN(data.getTime()) || data.getFullYear() < 1900) {
+                        // Excel usa dias desde 01/01/1900 (mas Excel conta 1900 como ano bissexto, então ajustar)
+                        const dataBase = new Date(1899, 11, 30); // 30/12/1899
+                        data = new Date(dataBase.getTime() + cell.value * 24 * 60 * 60 * 1000);
+                    }
+                    if (!isNaN(data.getTime()) && data.getFullYear() >= 1900) {
                         return data.toISOString().substring(0, 10);
                     }
                 }
                 // Se for string, tentar parsear
-                if (typeof cell.value === 'string') {
-                    return cell.value;
+                if (typeof cell.value === 'string' && cell.value.trim()) {
+                    return cell.value.trim();
                 }
             }
             // Tentar objectValue para datas
-            if (cell.objectValue) {
+            if (cell.objectValue !== null && cell.objectValue !== undefined) {
                 if (cell.objectValue instanceof Date) {
                     return cell.objectValue.toISOString().substring(0, 10);
                 }
-                if (typeof cell.objectValue === 'string') {
-                    return cell.objectValue;
+                if (typeof cell.objectValue === 'string' && cell.objectValue.trim()) {
+                    return cell.objectValue.trim();
                 }
+                // Se objectValue for um número (timestamp)
+                if (typeof cell.objectValue === 'number') {
+                    let data = new Date(cell.objectValue);
+                    if (isNaN(data.getTime()) || data.getFullYear() < 1900) {
+                        const dataBase = new Date(1899, 11, 30);
+                        data = new Date(dataBase.getTime() + cell.objectValue * 24 * 60 * 60 * 1000);
+                    }
+                    if (!isNaN(data.getTime()) && data.getFullYear() >= 1900) {
+                        return data.toISOString().substring(0, 10);
+                    }
+                }
+            }
+            // Tentar displayValue como último recurso para datas
+            if (cell.displayValue !== null && cell.displayValue !== undefined && typeof cell.displayValue === 'string' && cell.displayValue.trim()) {
+                return cell.displayValue.trim();
             }
         }
         
         // Priorizar objectValue para MULTI_PICKLIST, depois value, depois displayValue
-        if (cell.objectValue) {
+        if (cell.objectValue !== null && cell.objectValue !== undefined) {
             if (cell.objectValue.values && Array.isArray(cell.objectValue.values)) {
                 return cell.objectValue.values.join(", ");
             }
             return cell.objectValue;
         }
-        return cell.value ?? cell.displayValue ?? null;
+        // Tentar value
+        if (cell.value !== null && cell.value !== undefined) {
+            return cell.value;
+        }
+        // Tentar displayValue como último recurso
+        if (cell.displayValue !== null && cell.displayValue !== undefined) {
+            return cell.displayValue;
+        }
+        return null;
     };
     const medicoes = sheet.rows
         .map((row, index) => {
