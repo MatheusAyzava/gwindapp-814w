@@ -247,32 +247,46 @@ async function buscarMedicoesDoSmartsheet() {
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     // Tentar encontrar a coluna de data de múltiplas formas
     // IMPORTANTE: A coluna se chama "Dia" no Smartsheet e contém as datas
-    let colDia = findCol((t) => {
-        const lower = t.toLowerCase().trim();
-        // Primeiro tentar "dia" exato (sem "data") - esta é a coluna principal
-        if (lower === "dia") {
-            return true;
+    let colDia = null;
+    
+    // Primeiro: tentar "Dia" exato (case-insensitive)
+    colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "dia");
+    if (colDia) {
+        console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+    }
+    
+    // Se não encontrou, tentar outras variações
+    if (!colDia) {
+        colDia = findCol((t) => {
+            const lower = t.toLowerCase().trim();
+            // Tentar "dia" exato primeiro
+            if (lower === "dia") {
+                return true;
+            }
+            // Depois tentar outras variações
+            return lower.startsWith("dia") || 
+                   lower === "data" ||
+                   lower.includes("data início") ||
+                   lower.includes("data inicio") ||
+                   lower.includes("data de início") ||
+                   lower.includes("data de inicio") ||
+                   lower.includes("01 - data") ||
+                   lower.includes("01-data") ||
+                   lower.includes("01 - data início") ||
+                   lower.includes("01 - data inicio") ||
+                   lower.includes("01-data início") ||
+                   lower.includes("01-data inicio") ||
+                   (lower.includes("01") && lower.includes("data")) ||
+                   (lower.includes("início") && !lower.includes("hora")) ||
+                   (lower.includes("inicio") && !lower.includes("hora")) ||
+                   lower.includes("date") ||
+                   lower.includes("data início") ||
+                   lower.includes("data inicio");
+        });
+        if (colDia) {
+            console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
         }
-        // Depois tentar outras variações
-        return lower.startsWith("dia") || 
-               lower === "data" ||
-               lower.includes("data início") ||
-               lower.includes("data inicio") ||
-               lower.includes("data de início") ||
-               lower.includes("data de inicio") ||
-               lower.includes("01 - data") ||
-               lower.includes("01-data") ||
-               lower.includes("01 - data início") ||
-               lower.includes("01 - data inicio") ||
-               lower.includes("01-data início") ||
-               lower.includes("01-data inicio") ||
-               (lower.includes("01") && lower.includes("data")) ||
-               (lower.includes("início") && !lower.includes("hora")) ||
-               (lower.includes("inicio") && !lower.includes("hora")) ||
-               lower.includes("date") ||
-               lower.includes("data início") ||
-               lower.includes("data inicio");
-    });
+    }
     
     // Se não encontrou, tentar buscar por tipo DATE ou DATETIME
     if (!colDia) {
