@@ -242,8 +242,14 @@ async function buscarMedicoesDoSmartsheet() {
         return lower.startsWith("dia") || 
                lower === "data" ||
                lower.includes("data início") ||
+               lower.includes("data inicio") ||
+               lower.includes("data de início") ||
+               lower.includes("data de inicio") ||
                lower.includes("01 - data") ||
-               lower.includes("data inicio");
+               lower.includes("01-data") ||
+               (lower.includes("01") && lower.includes("data")) ||
+               (lower.includes("início") && !lower.includes("hora")) ||
+               (lower.includes("inicio") && !lower.includes("hora"));
     });
     const colSemana = findCol((t) => {
         const lower = t.toLowerCase().trim();
