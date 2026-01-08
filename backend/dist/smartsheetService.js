@@ -346,21 +346,44 @@ async function buscarMedicoesDoSmartsheet() {
         if (!horaFim && colHoraSaida) {
             console.warn(`[Smartsheet] ⚠️ Hora fim não encontrada na linha ${row.id || index}. Coluna encontrada: ${colHoraSaida.title} (ID: ${colHoraSaida.id})`);
         }
+        // Log para debug se data não foi encontrada
+        if (!dia && colDia) {
+            console.warn(`[Smartsheet] ⚠️ Data/Dia não encontrada na linha ${row.id || index}. Coluna encontrada: ${colDia.title} (ID: ${colDia.id})`);
+        }
         // Converter data se necessário
         let diaFormatado = null;
         if (dia) {
             if (typeof dia === "string") {
-                // Tentar parsear data no formato brasileiro DD/MM/YYYY
+                // Tentar parsear data no formato brasileiro DD/MM/YYYY ou DD/MM/YY
                 const partes = dia.split("/");
                 if (partes.length === 3) {
-                    diaFormatado = `${partes[2]}-${partes[1]}-${partes[0]}`;
+                    // Se o ano tem 2 dígitos, assumir 20XX
+                    const ano = partes[2].length === 2 ? `20${partes[2]}` : partes[2];
+                    diaFormatado = `${ano}-${partes[1].padStart(2, '0')}-${partes[0].padStart(2, '0')}`;
+                }
+                // Tentar formato ISO YYYY-MM-DD
+                else if (dia.match(/^\d{4}-\d{2}-\d{2}/)) {
+                    diaFormatado = dia.substring(0, 10);
                 }
                 else {
-                    diaFormatado = dia;
+                    // Tentar parsear como Date
+                    const dataParseada = new Date(dia);
+                    if (!isNaN(dataParseada.getTime())) {
+                        diaFormatado = dataParseada.toISOString().substring(0, 10);
+                    } else {
+                        diaFormatado = dia;
+                    }
                 }
             }
             else if (dia instanceof Date) {
                 diaFormatado = dia.toISOString().substring(0, 10);
+            }
+            else {
+                // Se for número (timestamp), converter
+                const dataParseada = new Date(dia);
+                if (!isNaN(dataParseada.getTime())) {
+                    diaFormatado = dataParseada.toISOString().substring(0, 10);
+                }
             }
         }
         return {
