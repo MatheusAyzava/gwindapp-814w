@@ -688,6 +688,12 @@ async function buscarMedicoesDoSmartsheet() {
                 console.warn(`[Smartsheet] ⚠️ Linha ${index} tem hora (${horaInicio}) mas não tem data. Coluna de data: ${colDia ? colDia.title : 'NÃO ENCONTRADA'}`);
             }
         }
+        
+        // Log se diaFormatado está null mas deveria ter valor
+        if (!diaFormatado && dia && index < 3) {
+            console.warn(`[Smartsheet] ⚠️ Linha ${index}: dia existe (${dia}, tipo: ${typeof dia}) mas diaFormatado é null após parsing`);
+        }
+        
         return {
             id: row.id || index,
             data: new Date().toISOString(),
