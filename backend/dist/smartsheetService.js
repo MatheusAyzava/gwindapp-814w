@@ -248,20 +248,20 @@ async function buscarMedicoesDoSmartsheet() {
     
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     // Tentar encontrar a coluna de data de múltiplas formas
-    // IMPORTANTE: A coluna pode se chamar "Data", "Dia" ou "Modificado" no Smartsheet
+    // IMPORTANTE: A coluna se chama "Dia" no Smartsheet e contém datas no formato DD/MM/YY
     let colDia = null;
     
-    // Primeiro: tentar "Data" exato (case-insensitive) - esta parece ser a coluna principal com datas MM/DD/YY
-    colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "data");
+    // PRIMEIRO: tentar "Dia" exato (case-insensitive) - PRIORIDADE MÁXIMA
+    colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "dia");
     if (colDia) {
-        console.log(`[Smartsheet] ✅ Coluna "Data" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
     }
     
-    // Segundo: tentar "Dia" exato (case-insensitive)
+    // Segundo: tentar "Data" exato (case-insensitive) - apenas como fallback
     if (!colDia) {
-        colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "dia");
+        colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "data");
         if (colDia) {
-            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+            console.log(`[Smartsheet] ✅ Coluna "Data" encontrada por busca exata (fallback): "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
         }
     }
     
