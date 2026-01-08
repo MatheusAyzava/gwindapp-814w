@@ -422,6 +422,10 @@ async function buscarMedicoesDoSmartsheet() {
                     if (!isNaN(dataParseada.getTime())) {
                         diaFormatado = dataParseada.toISOString().substring(0, 10);
                     } else {
+                        // Log se não conseguir parsear
+                        if (index < 3) {
+                            console.warn(`[Smartsheet] ⚠️ Não foi possível parsear data: "${dia}" (linha ${index})`);
+                        }
                         diaFormatado = dia;
                     }
                 }
@@ -434,7 +438,16 @@ async function buscarMedicoesDoSmartsheet() {
                 const dataParseada = new Date(dia);
                 if (!isNaN(dataParseada.getTime())) {
                     diaFormatado = dataParseada.toISOString().substring(0, 10);
+                } else {
+                    if (index < 3) {
+                        console.warn(`[Smartsheet] ⚠️ Não foi possível converter timestamp para data: ${dia} (linha ${index})`);
+                    }
                 }
+            }
+        } else {
+            // Se não tem dia mas tem hora, logar para debug
+            if (horaInicio && index < 3) {
+                console.warn(`[Smartsheet] ⚠️ Linha ${index} tem hora (${horaInicio}) mas não tem data. Coluna de data: ${colDia ? colDia.title : 'NÃO ENCONTRADA'}`);
             }
         }
         return {
