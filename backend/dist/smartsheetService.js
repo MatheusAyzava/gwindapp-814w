@@ -490,18 +490,31 @@ async function buscarMedicoesDoSmartsheet() {
                 semana: buscaValor(row, colSemana?.id),
             });
             
-            // Se não tem dia mas tem coluna de data, investigar a célula
+            // Se não tem dia mas tem coluna de data, investigar a célula em detalhes
             if (!dia && colDia) {
                 const cell = row.cells.find((c) => c.columnId === colDia.id);
                 if (cell) {
-                    console.warn(`[Smartsheet] ⚠️ Linha ${index} - Célula de data encontrada mas vazia:`, {
+                    console.warn(`[Smartsheet] ⚠️ Linha ${index} - Célula de data encontrada mas vazia:`, JSON.stringify({
                         cellValue: cell.value,
                         cellDisplayValue: cell.displayValue,
                         cellObjectValue: cell.objectValue,
                         cellType: typeof cell.value,
-                    });
+                        cellColumnId: cell.columnId,
+                        colDiaId: colDia.id
+                    }, null, 2));
                 } else {
-                    console.warn(`[Smartsheet] ⚠️ Linha ${index} - Célula de data não encontrada na linha`);
+                    console.warn(`[Smartsheet] ⚠️ Linha ${index} - Célula de data não encontrada na linha. Coluna ID esperada: ${colDia.id}`);
+                    // Listar todas as células da linha para debug
+                    console.log(`[Smartsheet] 🔬 Todas as células da linha ${index}:`, row.cells.map(c => {
+                        const col = sheet.columns.find(col => col.id === c.columnId);
+                        return {
+                            columnTitle: col ? col.title : 'DESCONHECIDA',
+                            columnId: c.columnId,
+                            value: c.value,
+                            displayValue: c.displayValue,
+                            objectValue: c.objectValue
+                        };
+                    }));
                 }
             }
         }
