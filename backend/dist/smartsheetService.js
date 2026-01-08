@@ -408,12 +408,26 @@ async function buscarMedicoesDoSmartsheet() {
         // Log para debug - primeira linha
         if (index === 0) {
             console.log('[Smartsheet] 🔍 Mapeamento de colunas:', {
-                colDiaEncontrada: colDia ? `✅ "${colDia.title}" (ID: ${colDia.id})` : '❌ NÃO ENCONTRADA',
+                colDiaEncontrada: colDia ? `✅ "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})` : '❌ NÃO ENCONTRADA',
                 colHoraEntradaEncontrada: colHoraEntrada ? `✅ "${colHoraEntrada.title}" (ID: ${colHoraEntrada.id})` : '❌ NÃO ENCONTRADA',
                 colHoraSaidaEncontrada: colHoraSaida ? `✅ "${colHoraSaida.title}" (ID: ${colHoraSaida.id})` : '❌ NÃO ENCONTRADA',
             });
+            
+            // Se coluna de data não foi encontrada, listar colunas que podem ser de data
+            if (!colDia) {
+                console.warn('[Smartsheet] ⚠️ Coluna de data NÃO encontrada! Procurando colunas similares...');
+                const possiveisColunasData = sheet.columns.filter(c => {
+                    const lower = c.title.toLowerCase();
+                    return lower.includes("data") || lower.includes("dia") || lower.includes("date") || lower.includes("início") || lower.includes("inicio");
+                });
+                if (possiveisColunasData.length > 0) {
+                    console.warn('[Smartsheet] Colunas que podem ser de data:', possiveisColunasData.map(c => `"${c.title}" (ID: ${c.id}, Type: ${c.type})`));
+                }
+            }
+            
             console.log('[Smartsheet] 📊 Primeira linha processada:', {
                 diaRaw: dia,
+                diaTipo: typeof dia,
                 horaInicioRaw: horaInicioRaw,
                 horaFimRaw: horaFimRaw,
                 horaInicioFormatada: horaInicio,
@@ -421,6 +435,16 @@ async function buscarMedicoesDoSmartsheet() {
                 projeto: buscaValor(row, colProjeto?.id),
                 semana: buscaValor(row, colSemana?.id),
                 equipe: buscaValor(row, colEquipe?.id)
+            });
+            
+            // Log todas as células da primeira linha para debug
+            console.log('[Smartsheet] 🔬 Todas as células da primeira linha:');
+            row.cells.forEach((cell, idx) => {
+                const col = sheet.columns.find(c => c.id === cell.columnId);
+                if (col) {
+                    const valor = cell.value ?? cell.displayValue ?? cell.objectValue ?? 'VAZIO';
+                    console.log(`  [${idx}] Coluna: "${col.title}" (ID: ${col.id}, Type: ${col.type}) = ${JSON.stringify(valor)}`);
+                }
             });
         }
         
