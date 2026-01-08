@@ -458,7 +458,35 @@ async function buscarMedicoesDoSmartsheet() {
         const horaInicio = formatarHora(horaInicioRaw);
         const horaFim = formatarHora(horaFimRaw);
         
-        // Log para debug - primeira linha
+        // Log para debug - primeiras 3 linhas para ver padrão
+        if (index < 3) {
+            console.log(`[Smartsheet] 📊 Linha ${index}:`, {
+                colDiaEncontrada: colDia ? `"${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})` : '❌ NÃO ENCONTRADA',
+                diaRaw: dia,
+                diaTipo: typeof dia,
+                horaInicio: horaInicio,
+                horaFim: horaFim,
+                projeto: buscaValor(row, colProjeto?.id),
+                semana: buscaValor(row, colSemana?.id),
+            });
+            
+            // Se não tem dia mas tem coluna de data, investigar a célula
+            if (!dia && colDia) {
+                const cell = row.cells.find((c) => c.columnId === colDia.id);
+                if (cell) {
+                    console.warn(`[Smartsheet] ⚠️ Linha ${index} - Célula de data encontrada mas vazia:`, {
+                        cellValue: cell.value,
+                        cellDisplayValue: cell.displayValue,
+                        cellObjectValue: cell.objectValue,
+                        cellType: typeof cell.value,
+                    });
+                } else {
+                    console.warn(`[Smartsheet] ⚠️ Linha ${index} - Célula de data não encontrada na linha`);
+                }
+            }
+        }
+        
+        // Log para debug - primeira linha com todas as células
         if (index === 0) {
             console.log('[Smartsheet] 🔍 Mapeamento de colunas:', {
                 colDiaEncontrada: colDia ? `✅ "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})` : '❌ NÃO ENCONTRADA',
