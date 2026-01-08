@@ -783,6 +783,44 @@ app.post("/medicoes", async (req, res) => {
     res.status(201).json(medicao);
 });
 // Buscar todas as medições diretamente do Smartsheet (DEVE VIR ANTES de /medicoes)
+app.get("/smartsheet/status", async (_req, res) => {
+    try {
+        const tokenConfigurado = !!process.env.SMARTSHEET_TOKEN;
+        const sheetMedicoesConfigurado = !!process.env.SMARTSHEET_SHEET_MEDICOES;
+        let tokenValido = undefined;
+        if (tokenConfigurado) {
+            try {
+                // Testar se o token é válido fazendo uma requisição simples
+                const axios_1 = require("axios");
+                await axios_1.default.get("https://api.smartsheet.com/2.0/users/me", {
+                    headers: {
+                        Authorization: `Bearer ${process.env.SMARTSHEET_TOKEN}`,
+                    },
+                    timeout: 5000,
+                });
+                tokenValido = true;
+            }
+            catch (e) {
+                tokenValido = false;
+            }
+        }
+        res.json({
+            tokenConfigurado,
+            sheetMedicoesConfigurado,
+            tokenValido,
+            urlBackend: process.env.API_BASE_URL || "https://gwindapp-portal-web.onrender.com",
+        });
+    }
+    catch (e) {
+        console.error("[Smartsheet/Status] Erro ao verificar status:", e?.message);
+        res.status(500).json({
+            error: "Erro ao verificar status do Smartsheet.",
+            detalhes: e?.message,
+            tokenConfigurado: false,
+            sheetMedicoesConfigurado: false,
+        });
+    }
+});
 app.get("/medicoes/smartsheet", async (_req, res) => {
     try {
         const medicoes = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
