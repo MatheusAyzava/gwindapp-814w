@@ -833,25 +833,35 @@ app.get("/smartsheet/debug/colunas", async (_req, res) => {
             index: col.index
         }));
         
-        // Tentar encontrar coluna de data usando a mesma lógica do código
-        const findCol = (matcher) => sheet.columns.find((c) => matcher(c.title.toLowerCase()));
-        let colDia = findCol((t) => {
-            const lower = t.toLowerCase().trim();
-            return lower.startsWith("dia") || 
-                   lower === "data" ||
-                   lower.includes("data início") ||
-                   lower.includes("data inicio") ||
-                   lower.includes("data de início") ||
-                   lower.includes("data de inicio") ||
-                   lower.includes("01 - data") ||
-                   lower.includes("01-data") ||
-                   lower.includes("01 - data início") ||
-                   lower.includes("01 - data inicio") ||
-                   (lower.includes("01") && lower.includes("data")) ||
-                   (lower.includes("início") && !lower.includes("hora")) ||
-                   (lower.includes("inicio") && !lower.includes("hora")) ||
-                   lower.includes("date");
+        // Tentar encontrar coluna de data usando a mesma lógica do smartsheetService.js
+        // PRIMEIRO: tentar "Dia" exato (case-insensitive) - PRIORIDADE MÁXIMA
+        let colDia = sheet.columns.find(c => {
+            const lower = c.title.toLowerCase().trim();
+            return lower === "dia" || lower === '"dia"' || lower === "'dia'";
         });
+        if (colDia) {
+            console.log(`[Debug] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        } else {
+            // Tentar busca mais flexível: qualquer coluna que contenha "dia" (mas não "dados", "diário", etc.)
+            const possiveisDia = sheet.columns.filter(c => {
+                const lower = c.title.toLowerCase().trim();
+                return (lower.includes('dia') && lower.length <= 5) || // "dia" com no máximo 5 caracteres
+                       (lower === 'dia') ||
+                       (lower.startsWith('dia ') && lower.length <= 10); // "dia " seguido de algo curto
+            });
+            if (possiveisDia.length > 0) {
+                colDia = possiveisDia[0];
+                console.log(`[Debug] ✅ Coluna "Dia" encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+            }
+        }
+        
+        // Segundo: tentar "Data" exato (case-insensitive) - apenas como fallback
+        if (!colDia) {
+            colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "data");
+            if (colDia) {
+                console.log(`[Debug] ✅ Coluna "Data" encontrada por busca exata (fallback): "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+            }
+        }
         
         // Se não encontrou, tentar por tipo
         let colDiaPorTipo = null;
@@ -873,18 +883,29 @@ app.get("/smartsheet/debug/colunas", async (_req, res) => {
             }
         }
         
-        // Verificar primeira linha para ver valores
-        let primeiraLinhaData = null;
+        // Verificar primeiras 5 linhas para ver valores
+        let primeirasLinhasData = [];
         if (sheet.rows.length > 0 && (colDia || colDiaPorTipo || colDiaPorBuscaAmpla)) {
             const colFinal = colDia || colDiaPorTipo || colDiaPorBuscaAmpla;
-            const cell = sheet.rows[0].cells.find(c => c.columnId === colFinal.id);
-            if (cell) {
-                primeiraLinhaData = {
-                    value: cell.value,
-                    displayValue: cell.displayValue,
-                    objectValue: cell.objectValue,
-                    valueType: typeof cell.value
-                };
+            for (let i = 0; i < Math.min(5, sheet.rows.length); i++) {
+                const cell = sheet.rows[i].cells.find(c => c.columnId === colFinal.id);
+                if (cell) {
+                    primeirasLinhasData.push({
+                        linha: i,
+                        value: cell.value,
+                        displayValue: cell.displayValue,
+                        objectValue: cell.objectValue,
+                        valueType: typeof cell.value,
+                        hasValue: cell.value !== null && cell.value !== undefined,
+                        hasDisplayValue: cell.displayValue !== null && cell.displayValue !== undefined,
+                        hasObjectValue: cell.objectValue !== null && cell.objectValue !== undefined
+                    });
+                } else {
+                    primeirasLinhasData.push({
+                        linha: i,
+                        erro: "Célula não encontrada para esta coluna"
+                    });
+                }
             }
         }
         
@@ -909,7 +930,8 @@ app.get("/smartsheet/debug/colunas", async (_req, res) => {
                 type: colDiaPorBuscaAmpla.type,
                 metodo: "busca_ampla"
             } : null,
-            primeiraLinhaData: primeiraLinhaData,
+            primeiraLinhaData: primeirasLinhasData.length > 0 ? primeirasLinhasData[0] : null,
+            primeirasLinhasData: primeirasLinhasData,
             possiveisColunasData: todasColunas.filter(c => {
                 const lower = c.title.toLowerCase();
                 return lower.includes("data") || lower.includes("dia") || lower.includes("date");
