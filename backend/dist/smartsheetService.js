@@ -248,26 +248,34 @@ async function buscarMedicoesDoSmartsheet() {
     
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     // Tentar encontrar a coluna de data de múltiplas formas
-    // IMPORTANTE: A coluna se chama "Dia" no Smartsheet e contém as datas
+    // IMPORTANTE: A coluna pode se chamar "Data" ou "Dia" no Smartsheet
     let colDia = null;
     
-    // Primeiro: tentar "Dia" exato (case-insensitive)
-    colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "dia");
+    // Primeiro: tentar "Data" exato (case-insensitive) - esta parece ser a coluna principal com datas MM/DD/YY
+    colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "data");
     if (colDia) {
-        console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        console.log(`[Smartsheet] ✅ Coluna "Data" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+    }
+    
+    // Segundo: tentar "Dia" exato (case-insensitive)
+    if (!colDia) {
+        colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "dia");
+        if (colDia) {
+            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        }
     }
     
     // Se não encontrou, tentar outras variações
     if (!colDia) {
         colDia = findCol((t) => {
             const lower = t.toLowerCase().trim();
-            // Tentar "dia" exato primeiro
-            if (lower === "dia") {
+            // Tentar "data" ou "dia" exato primeiro
+            if (lower === "data" || lower === "dia") {
                 return true;
             }
             // Depois tentar outras variações
             return lower.startsWith("dia") || 
-                   lower === "data" ||
+                   lower.startsWith("data") ||
                    lower.includes("data início") ||
                    lower.includes("data inicio") ||
                    lower.includes("data de início") ||
