@@ -492,7 +492,17 @@ async function buscarMedicoesDoSmartsheet() {
         if (!temDados) {
             return null;
         }
-        const dia = buscaValor(row, colDia?.id);
+        let dia = buscaValor(row, colDia?.id);
+        
+        // Se a coluna é "Modificado" e tem formato de timestamp (MM/DD/YY HH:MM), extrair só a data
+        if (dia && colDia && colDia.title.toLowerCase().trim() === "modificado" && typeof dia === "string") {
+            // Formato: "07/01/26 00:03" -> extrair "07/01/26"
+            const partesTimestamp = dia.trim().split(" ");
+            if (partesTimestamp.length > 0) {
+                dia = partesTimestamp[0]; // Pegar só a parte da data
+            }
+        }
+        
         const horaInicioRaw = buscaValor(row, colHoraEntrada?.id);
         const horaFimRaw = buscaValor(row, colHoraSaida?.id);
         const horaInicio = formatarHora(horaInicioRaw);
