@@ -421,8 +421,33 @@ async function buscarMedicoesDoSmartsheet() {
         const cell = row.cells.find((c) => c.columnId === colId);
         if (!cell) return null;
         
-        // Para colunas de data (DATE, DATETIME), tentar extrair o valor correto
+        // Para colunas de data (DATE, DATETIME) OU coluna "Dia", tentar extrair o valor correto
         const col = sheet.columns.find(c => c.id === colId);
+        const isColunaDia = col && col.title.toLowerCase().trim() === "dia";
+        
+        // Para coluna "Dia", priorizar displayValue (pode ter formato DD/MM/YY já formatado)
+        if (isColunaDia) {
+            // Tentar displayValue primeiro (pode ter formato DD/MM/YY já formatado)
+            if (cell.displayValue !== null && cell.displayValue !== undefined && typeof cell.displayValue === 'string' && cell.displayValue.trim()) {
+                return cell.displayValue.trim();
+            }
+            // Depois tentar value
+            if (cell.value !== null && cell.value !== undefined) {
+                if (typeof cell.value === 'string' && cell.value.trim()) {
+                    return cell.value.trim();
+                }
+                return cell.value;
+            }
+            // Por último, tentar objectValue
+            if (cell.objectValue !== null && cell.objectValue !== undefined) {
+                if (typeof cell.objectValue === 'string' && cell.objectValue.trim()) {
+                    return cell.objectValue.trim();
+                }
+                return cell.objectValue;
+            }
+            return null;
+        }
+        
         if (col && (col.type === 'DATE' || col.type === 'DATETIME')) {
             // Para colunas de data, o Smartsheet pode retornar o valor em diferentes formatos
             if (cell.value !== null && cell.value !== undefined) {
