@@ -791,8 +791,8 @@ app.get("/smartsheet/status", async (_req, res) => {
         if (tokenConfigurado) {
             try {
                 // Testar se o token é válido fazendo uma requisição simples
-                const axios_1 = require("axios");
-                await axios_1.default.get("https://api.smartsheet.com/2.0/users/me", {
+                const axios = require("axios");
+                await axios.get("https://api.smartsheet.com/2.0/users/me", {
                     headers: {
                         Authorization: `Bearer ${process.env.SMARTSHEET_TOKEN}`,
                     },
