@@ -236,24 +236,45 @@ async function buscarMedicoesDoSmartsheet() {
     }
     const sheet = await getSheet(SHEET_MEDICOES);
     const findCol = (matcher) => sheet.columns.find((c) => matcher(c.title.toLowerCase()));
-    // Mapear todas as colunas necessárias
-    const colDia = findCol((t) => t.startsWith("dia"));
-    const colSemana = findCol((t) => t.startsWith("sema"));
+    // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
+    const colDia = findCol((t) => {
+        const lower = t.toLowerCase().trim();
+        return lower.startsWith("dia") || 
+               lower === "data" ||
+               lower.includes("data início") ||
+               lower.includes("01 - data") ||
+               lower.includes("data inicio");
+    });
+    const colSemana = findCol((t) => {
+        const lower = t.toLowerCase().trim();
+        return lower.startsWith("sema") ||
+               lower.includes("semana");
+    });
     const colHoraEntrada = findCol((t) => {
-        const lower = t.toLowerCase();
+        const lower = t.toLowerCase().trim();
         return lower.includes("hora de entr") || 
+               lower.includes("hora de entrada") ||
                lower.includes("01 - hora in") || 
+               lower.includes("01 - hora início") ||
                lower.includes("hora inicio") ||
                lower.includes("hora início") ||
-               lower.startsWith("01 - hora");
+               lower.startsWith("01 - hora") ||
+               (lower.includes("hora") && lower.includes("entrada")) ||
+               (lower.includes("hora") && lower.includes("início")) ||
+               (lower.includes("hora") && lower.includes("inicio"));
     });
     const colHoraSaida = findCol((t) => {
-        const lower = t.toLowerCase();
+        const lower = t.toLowerCase().trim();
         return lower.includes("hora de sa") || 
+               lower.includes("hora de saída") ||
+               lower.includes("hora de saida") ||
                lower.includes("hora final") || 
                lower.includes("01 - hora f") ||
+               lower.includes("01 - hora fim") ||
                lower.includes("hora fim") ||
-               (lower.includes("final") && lower.includes("hora"));
+               (lower.includes("final") && lower.includes("hora")) ||
+               (lower.includes("hora") && lower.includes("saída")) ||
+               (lower.includes("hora") && lower.includes("saida"));
     });
     const colCliente = findCol((t) => t === "cliente");
     const colProjeto = findCol((t) => t === "projeto");
