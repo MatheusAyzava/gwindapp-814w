@@ -314,11 +314,11 @@ async function buscarMedicoesDoSmartsheet() {
         }
     }
     
-    // Se ainda não encontrou, tentar buscar qualquer coluna que contenha "data" ou "dia" no nome
+    // Se ainda não encontrou, tentar buscar qualquer coluna que contenha "data", "dia", "modificado" ou "date" no nome
     if (!colDia) {
         const possiveis = sheet.columns.filter(c => {
             const lower = c.title.toLowerCase();
-            return (lower.includes("data") || lower.includes("dia") || lower.includes("date")) && 
+            return (lower.includes("data") || lower.includes("dia") || lower.includes("date") || lower.includes("modificado")) && 
                    !lower.includes("hora") && 
                    !lower.includes("time");
         });
@@ -326,6 +326,14 @@ async function buscarMedicoesDoSmartsheet() {
             colDia = possiveis[0];
             console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca ampla: "${colDia.title}"`);
         }
+    }
+    
+    // Se ainda não encontrou, listar TODAS as colunas para debug
+    if (!colDia) {
+        console.error('[Smartsheet] ❌ COLUNA DE DATA NÃO ENCONTRADA! Todas as colunas disponíveis:');
+        sheet.columns.forEach((col, idx) => {
+            console.error(`  [${idx}] "${col.title}" (ID: ${col.id}, Type: ${col.type})`);
+        });
     }
     const colSemana = findCol((t) => {
         const lower = t.toLowerCase().trim();
