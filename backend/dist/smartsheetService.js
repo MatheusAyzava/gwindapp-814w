@@ -335,6 +335,21 @@ async function buscarMedicoesDoSmartsheet() {
         const horaFimRaw = buscaValor(row, colHoraSaida?.id);
         const horaInicio = formatarHora(horaInicioRaw);
         const horaFim = formatarHora(horaFimRaw);
+        
+        // Log para debug - primeira linha
+        if (index === 0) {
+            console.log('[Smartsheet] Primeira linha processada:', {
+                colDiaEncontrada: colDia ? colDia.title : 'NÃO ENCONTRADA',
+                colHoraEntradaEncontrada: colHoraEntrada ? colHoraEntrada.title : 'NÃO ENCONTRADA',
+                colHoraSaidaEncontrada: colHoraSaida ? colHoraSaida.title : 'NÃO ENCONTRADA',
+                diaRaw: dia,
+                horaInicioRaw: horaInicioRaw,
+                horaFimRaw: horaFimRaw,
+                horaInicioFormatada: horaInicio,
+                horaFimFormatada: horaFim
+            });
+        }
+        
         // Se não tem pelo menos dia ou horas, pular
         if (!dia && !horaInicio) {
             return null;
