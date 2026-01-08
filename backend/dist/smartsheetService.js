@@ -236,6 +236,13 @@ async function buscarMedicoesDoSmartsheet() {
     }
     const sheet = await getSheet(SHEET_MEDICOES);
     const findCol = (matcher) => sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+    
+    // Log: Listar TODAS as colunas disponíveis para debug
+    console.log('[Smartsheet] 📋 Colunas disponíveis no Smartsheet:');
+    sheet.columns.forEach((col, idx) => {
+        console.log(`  [${idx}] "${col.title}" (ID: ${col.id}, Type: ${col.type})`);
+    });
+    
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     const colDia = findCol((t) => {
         const lower = t.toLowerCase().trim();
@@ -302,15 +309,33 @@ async function buscarMedicoesDoSmartsheet() {
     const formatarHora = (hora) => {
         if (!hora) return null;
         const str = String(hora).trim();
-        // Remover espaços e caracteres especiais
-        const limpa = str.replace(/\s+/g, "").replace(/[^\d:]/g, "");
-        // Tentar parsear formato HH:MM ou H:MM
-        const partes = limpa.split(":");
-        if (partes.length >= 2) {
+        
+        // Se já está no formato HH:MM, retornar
+        if (str.includes(":") && str.match(/^\d{1,2}:\d{2}$/)) {
+            const partes = str.split(":");
             const horas = String(Number(partes[0]) || 0).padStart(2, "0");
             const minutos = String(Number(partes[1]) || 0).padStart(2, "0");
             return `${horas}:${minutos}`;
         }
+        
+        // Se está no formato "7h00" ou "07h00", converter para "07:00"
+        if (str.includes("h") || str.includes("H")) {
+            const partes = str.replace(/[hH]/g, ":").split(":");
+            if (partes.length >= 2) {
+                const horas = String(Number(partes[0]) || 0).padStart(2, "0");
+                const minutos = String(Number(partes[1]) || 0).padStart(2, "0");
+                return `${horas}:${minutos}`;
+            }
+        }
+        
+        // Tentar extrair números e formatar
+        const numeros = str.match(/\d+/g);
+        if (numeros && numeros.length >= 2) {
+            const horas = String(Number(numeros[0]) || 0).padStart(2, "0");
+            const minutos = String(Number(numeros[1]) || 0).padStart(2, "0");
+            return `${horas}:${minutos}`;
+        }
+        
         // Se não conseguir parsear, retornar original
         return str;
     };
@@ -344,15 +369,20 @@ async function buscarMedicoesDoSmartsheet() {
         
         // Log para debug - primeira linha
         if (index === 0) {
-            console.log('[Smartsheet] Primeira linha processada:', {
-                colDiaEncontrada: colDia ? colDia.title : 'NÃO ENCONTRADA',
-                colHoraEntradaEncontrada: colHoraEntrada ? colHoraEntrada.title : 'NÃO ENCONTRADA',
-                colHoraSaidaEncontrada: colHoraSaida ? colHoraSaida.title : 'NÃO ENCONTRADA',
+            console.log('[Smartsheet] 🔍 Mapeamento de colunas:', {
+                colDiaEncontrada: colDia ? `✅ "${colDia.title}" (ID: ${colDia.id})` : '❌ NÃO ENCONTRADA',
+                colHoraEntradaEncontrada: colHoraEntrada ? `✅ "${colHoraEntrada.title}" (ID: ${colHoraEntrada.id})` : '❌ NÃO ENCONTRADA',
+                colHoraSaidaEncontrada: colHoraSaida ? `✅ "${colHoraSaida.title}" (ID: ${colHoraSaida.id})` : '❌ NÃO ENCONTRADA',
+            });
+            console.log('[Smartsheet] 📊 Primeira linha processada:', {
                 diaRaw: dia,
                 horaInicioRaw: horaInicioRaw,
                 horaFimRaw: horaFimRaw,
                 horaInicioFormatada: horaInicio,
-                horaFimFormatada: horaFim
+                horaFimFormatada: horaFim,
+                projeto: buscaValor(row, colProjeto?.id),
+                semana: buscaValor(row, colSemana?.id),
+                equipe: buscaValor(row, colEquipe?.id)
             });
         }
         
