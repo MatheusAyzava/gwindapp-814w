@@ -625,38 +625,48 @@ async function buscarMedicoesDoSmartsheet() {
         let diaFormatado = null;
         if (dia) {
             if (typeof dia === "string") {
-                // Tentar parsear data no formato brasileiro DD/MM/YYYY ou DD/MM/YY
-                // OU formato americano MM/DD/YYYY ou MM/DD/YY (como vem do Smartsheet)
-                const partes = dia.split("/");
+                // IMPORTANTE: A coluna "Dia" do Smartsheet usa formato brasileiro DD/MM/YY
+                // Exemplos: "13/10/25", "29/11/25"
+                const partes = dia.trim().split("/");
                 if (partes.length === 3) {
-                    // Verificar se é formato americano (MM/DD/YY) ou brasileiro (DD/MM/YY)
-                    // Se o primeiro número é > 12, provavelmente é formato brasileiro (DD/MM)
-                    // Se o segundo número é > 12, definitivamente é MM/DD
+                    // Verificar se é formato brasileiro (DD/MM/YY) ou americano (MM/DD/YY)
                     const primeiro = parseInt(partes[0]);
                     const segundo = parseInt(partes[1]);
                     
                     let diaNum, mesNum, anoStr;
                     
                     if (primeiro > 12) {
-                        // Formato brasileiro: DD/MM/YY
+                        // Definitivamente formato brasileiro: DD/MM/YY
                         diaNum = partes[0];
                         mesNum = partes[1];
                         anoStr = partes[2];
                     } else if (segundo > 12) {
-                        // Formato americano: MM/DD/YY
+                        // Definitivamente formato americano: MM/DD/YY
                         mesNum = partes[0];
                         diaNum = partes[1];
                         anoStr = partes[2];
                     } else {
-                        // Ambíguo - assumir formato americano MM/DD/YY (padrão Smartsheet)
-                        mesNum = partes[0];
-                        diaNum = partes[1];
-                        anoStr = partes[2];
+                        // Ambíguo - se a coluna se chama "Dia", assumir formato brasileiro DD/MM/YY
+                        if (colDia && colDia.title.toLowerCase().trim() === "dia") {
+                            diaNum = partes[0];
+                            mesNum = partes[1];
+                            anoStr = partes[2];
+                        } else {
+                            // Caso contrário, assumir formato americano MM/DD/YY
+                            mesNum = partes[0];
+                            diaNum = partes[1];
+                            anoStr = partes[2];
+                        }
                     }
                     
                     // Se o ano tem 2 dígitos, assumir 20XX
                     const ano = anoStr.length === 2 ? `20${anoStr}` : anoStr;
                     diaFormatado = `${ano}-${mesNum.padStart(2, '0')}-${diaNum.padStart(2, '0')}`;
+                    
+                    // Log para debug nas primeiras linhas
+                    if (index < 3) {
+                        console.log(`[Smartsheet] 📅 Linha ${index}: Data parseada: "${dia}" -> "${diaFormatado}" (formato: ${primeiro > 12 ? 'DD/MM/YY' : segundo > 12 ? 'MM/DD/YY' : 'ambíguo'})`);
+                    }
                 }
                 // Tentar formato ISO YYYY-MM-DD
                 else if (dia.match(/^\d{4}-\d{2}-\d{2}/)) {
