@@ -246,6 +246,7 @@ async function buscarMedicoesDoSmartsheet() {
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     const colDia = findCol((t) => {
         const lower = t.toLowerCase().trim();
+        // Tentar múltiplas variações, incluindo "01 - Data Início" que aparece na tabela
         return lower.startsWith("dia") || 
                lower === "data" ||
                lower.includes("data início") ||
@@ -254,9 +255,16 @@ async function buscarMedicoesDoSmartsheet() {
                lower.includes("data de inicio") ||
                lower.includes("01 - data") ||
                lower.includes("01-data") ||
+               lower.includes("01 - data início") ||
+               lower.includes("01 - data inicio") ||
+               lower.includes("01-data início") ||
+               lower.includes("01-data inicio") ||
                (lower.includes("01") && lower.includes("data")) ||
                (lower.includes("início") && !lower.includes("hora")) ||
-               (lower.includes("inicio") && !lower.includes("hora"));
+               (lower.includes("inicio") && !lower.includes("hora")) ||
+               lower.includes("date") ||
+               lower.includes("data início") ||
+               lower.includes("data inicio");
     });
     const colSemana = findCol((t) => {
         const lower = t.toLowerCase().trim();
@@ -343,6 +351,36 @@ async function buscarMedicoesDoSmartsheet() {
         if (!colId) return null;
         const cell = row.cells.find((c) => c.columnId === colId);
         if (!cell) return null;
+        
+        // Para colunas de data (DATE, DATETIME), tentar extrair o valor correto
+        const col = sheet.columns.find(c => c.id === colId);
+        if (col && (col.type === 'DATE' || col.type === 'DATETIME')) {
+            // Para colunas de data, o Smartsheet pode retornar o valor em diferentes formatos
+            if (cell.value) {
+                // Se for um número (timestamp do Excel), converter
+                if (typeof cell.value === 'number') {
+                    // Smartsheet usa epoch time em milissegundos para datas
+                    const data = new Date(cell.value);
+                    if (!isNaN(data.getTime())) {
+                        return data.toISOString().substring(0, 10);
+                    }
+                }
+                // Se for string, tentar parsear
+                if (typeof cell.value === 'string') {
+                    return cell.value;
+                }
+            }
+            // Tentar objectValue para datas
+            if (cell.objectValue) {
+                if (cell.objectValue instanceof Date) {
+                    return cell.objectValue.toISOString().substring(0, 10);
+                }
+                if (typeof cell.objectValue === 'string') {
+                    return cell.objectValue;
+                }
+            }
+        }
+        
         // Priorizar objectValue para MULTI_PICKLIST, depois value, depois displayValue
         if (cell.objectValue) {
             if (cell.objectValue.values && Array.isArray(cell.objectValue.values)) {
