@@ -925,6 +925,21 @@ app.get("/medicoes/smartsheet", async (_req, res) => {
     try {
         const medicoes = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
         console.log(`[Medicoes/Smartsheet] ✅ ${medicoes.length} medições encontradas no Smartsheet`);
+        
+        // Adicionar informações de debug na resposta
+        const comDia = medicoes.filter(m => m.dia).length;
+        const comHoraInicio = medicoes.filter(m => m.horaInicio).length;
+        const comHoraFim = medicoes.filter(m => m.horaFim).length;
+        
+        // Incluir debug info no header da resposta
+        res.setHeader('X-Debug-Info', JSON.stringify({
+            total: medicoes.length,
+            comDia: comDia,
+            comHoraInicio: comHoraInicio,
+            comHoraFim: comHoraFim,
+            semDia: medicoes.length - comDia
+        }));
+        
         res.json(medicoes);
     }
     catch (e) {

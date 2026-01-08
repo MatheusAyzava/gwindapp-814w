@@ -508,8 +508,8 @@ async function buscarMedicoesDoSmartsheet() {
         const horaInicio = formatarHora(horaInicioRaw);
         const horaFim = formatarHora(horaFimRaw);
         
-        // Log para debug - primeiras 3 linhas para ver padrão
-        if (index < 3) {
+        // Log para debug - primeiras 5 linhas para ver padrão
+        if (index < 5) {
             console.log(`[Smartsheet] 📊 Linha ${index}:`, {
                 colDiaEncontrada: colDia ? `"${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})` : '❌ NÃO ENCONTRADA',
                 diaRaw: dia,
