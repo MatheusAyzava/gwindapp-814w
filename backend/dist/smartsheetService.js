@@ -466,9 +466,11 @@ async function buscarMedicoesDoSmartsheet() {
     const medicoes = sheet.rows
         .map((row, index) => {
         // Pular linhas vazias (sem dados relevantes)
-        const temDados = colDia && buscaValor(row, colDia.id) ||
-            colProjeto && buscaValor(row, colProjeto.id) ||
-            colHoraEntrada && buscaValor(row, colHoraEntrada.id);
+        // IMPORTANTE: A coluna "Dia" pode não estar presente em todas as linhas (só aparece quando equipe é expandida)
+        // Então não exigir que tenha dia para considerar a linha válida
+        const temDados = colProjeto && buscaValor(row, colProjeto.id) ||
+            colHoraEntrada && buscaValor(row, colHoraEntrada.id) ||
+            colDia && buscaValor(row, colDia.id);
         if (!temDados) {
             return null;
         }
