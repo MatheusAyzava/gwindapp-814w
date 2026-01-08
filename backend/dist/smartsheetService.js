@@ -244,7 +244,8 @@ async function buscarMedicoesDoSmartsheet() {
     });
     
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
-    const colDia = findCol((t) => {
+    // Tentar encontrar a coluna de data de múltiplas formas
+    let colDia = findCol((t) => {
         const lower = t.toLowerCase().trim();
         // Tentar múltiplas variações, incluindo "01 - Data Início" que aparece na tabela
         return lower.startsWith("dia") || 
@@ -266,6 +267,28 @@ async function buscarMedicoesDoSmartsheet() {
                lower.includes("data início") ||
                lower.includes("data inicio");
     });
+    
+    // Se não encontrou, tentar buscar por tipo DATE ou DATETIME
+    if (!colDia) {
+        colDia = sheet.columns.find(c => c.type === 'DATE' || c.type === 'DATETIME');
+        if (colDia) {
+            console.log(`[Smartsheet] ✅ Coluna de data encontrada por tipo: "${colDia.title}" (Type: ${colDia.type})`);
+        }
+    }
+    
+    // Se ainda não encontrou, tentar buscar qualquer coluna que contenha "data" ou "dia" no nome
+    if (!colDia) {
+        const possiveis = sheet.columns.filter(c => {
+            const lower = c.title.toLowerCase();
+            return (lower.includes("data") || lower.includes("dia") || lower.includes("date")) && 
+                   !lower.includes("hora") && 
+                   !lower.includes("time");
+        });
+        if (possiveis.length > 0) {
+            colDia = possiveis[0];
+            console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca ampla: "${colDia.title}"`);
+        }
+    }
     const colSemana = findCol((t) => {
         const lower = t.toLowerCase().trim();
         return lower.startsWith("sema") ||
