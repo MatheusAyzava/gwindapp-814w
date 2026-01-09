@@ -659,59 +659,77 @@ app.post("/medicoes", async (req, res) => {
         }
         quantidade = 0; // Sem consumo de material
     }
+    // Função helper para converter valores para string quando necessário
+    const converterParaString = (valor) => {
+        if (valor === null || valor === undefined) return null;
+        if (typeof valor === 'number') {
+            // Se for NaN, retornar null
+            if (isNaN(valor)) return null;
+            return String(valor);
+        }
+        return String(valor);
+    };
+    
+    // Função helper para converter valores numéricos (tratar NaN)
+    const converterParaNumero = (valor) => {
+        if (valor === null || valor === undefined) return null;
+        const num = Number(valor);
+        return isNaN(num) ? null : num;
+    };
+    
     const medicao = await prisma.$transaction(async (tx) => {
         const novaMedicao = await tx.medicao.create({
             data: {
                 materialId: material.id,
                 quantidadeConsumida: quantidade,
                 projeto,
-                torre,
+                torre: converterParaString(torre),
                 usuarioId,
                 origem: origem ?? "mobile",
                 dia: dia ? new Date(dia) : null,
-                semana,
+                semana: converterParaString(semana),
                 cliente,
                 escala,
-                quantidadeTecnicos,
+                quantidadeTecnicos: converterParaNumero(quantidadeTecnicos),
                 tecnicoLider,
                 nomesTecnicos,
                 supervisor,
                 tipoIntervalo,
                 tipoAcesso,
-                pa,
+                pa: converterParaString(pa),
                 plataforma,
                 equipe,
                 tipoHora,
-                quantidadeEventos,
+                quantidadeEventos: converterParaNumero(quantidadeEventos),
                 horaInicio,
                 horaFim,
                 tipoDano,
                 danoCodigo,
-                larguraDanoMm,
-                comprimentoDanoMm,
+                larguraDanoMm: converterParaNumero(larguraDanoMm),
+                comprimentoDanoMm: converterParaNumero(comprimentoDanoMm),
                 etapaProcesso,
                 etapaLixamento,
                 resinaTipo,
-                resinaQuantidade,
-                resinaCatalisador,
-                resinaLote,
+                resinaQuantidade: converterParaNumero(resinaQuantidade),
+                resinaCatalisador: converterParaString(resinaCatalisador),
+                resinaLote: converterParaString(resinaLote),
                 resinaValidade,
                 massaTipo,
-                massaQuantidade,
+                massaQuantidade: converterParaNumero(massaQuantidade),
                 massaCatalisador,
                 massaLote,
                 massaValidade,
                 nucleoTipo,
-                nucleoEspessuraMm,
+                nucleoEspessuraMm: converterParaNumero(nucleoEspessuraMm),
                 puTipo,
-                puMassaPeso,
-                puCatalisadorPeso,
-                puLote,
+                puMassaPeso: converterParaNumero(puMassaPeso),
+                puCatalisadorPeso: converterParaNumero(puCatalisadorPeso),
+                puLote: converterParaString(puLote),
                 puValidade,
                 gelTipo,
-                gelPeso,
-                gelCatalisadorPeso,
-                gelLote,
+                gelPeso: converterParaNumero(gelPeso),
+                gelCatalisadorPeso: converterParaNumero(gelCatalisadorPeso),
+                gelLote: converterParaString(gelLote),
                 gelValidade,
                 retrabalho,
             },
