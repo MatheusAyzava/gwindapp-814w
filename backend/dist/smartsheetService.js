@@ -261,7 +261,9 @@ async function buscarMedicoesDoSmartsheet() {
     // Mapear todas as colunas necessárias - aceitar múltiplas variações de nomes
     // Tentar encontrar a coluna de data de múltiplas formas
     // IMPORTANTE: A coluna se chama "Dia" no Smartsheet e contém datas no formato DD/MM/YY
+    // PRIORIDADE: Sempre usar "Dia" se existir, nunca usar "Data" se "Dia" existir
     let colDia = null;
+    let colData = null; // Guardar "Data" separadamente para usar apenas se "Dia" não existir
     
     // PRIMEIRO: tentar "Dia" exato (case-insensitive) - PRIORIDADE MÁXIMA
     colDia = sheet.columns.find(c => {
@@ -269,7 +271,7 @@ async function buscarMedicoesDoSmartsheet() {
         return lower === "dia" || lower === '"dia"' || lower === "'dia'";
     });
     if (colDia) {
-        console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca exata: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type}) ⭐ É A COLUNA DIA!`);
     } else {
         // Tentar busca mais flexível: qualquer coluna que contenha "dia" (mas não "dados", "diário", etc.)
         const possiveisDia = sheet.columns.filter(c => {
@@ -280,16 +282,18 @@ async function buscarMedicoesDoSmartsheet() {
         });
         if (possiveisDia.length > 0) {
             colDia = possiveisDia[0];
-            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type}) ⭐ É A COLUNA DIA!`);
         }
     }
     
-    // Segundo: tentar "Data" exato (case-insensitive) - apenas como fallback
-    if (!colDia) {
-        colDia = sheet.columns.find(c => c.title.toLowerCase().trim() === "data");
-        if (colDia) {
-            console.log(`[Smartsheet] ✅ Coluna "Data" encontrada por busca exata (fallback): "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
-        }
+    // Guardar "Data" separadamente, mas NÃO usar se "Dia" já foi encontrado
+    colData = sheet.columns.find(c => c.title.toLowerCase().trim() === "data");
+    if (colData && !colDia) {
+        // Só usar "Data" se "Dia" não foi encontrado
+        colDia = colData;
+        console.log(`[Smartsheet] ✅ Coluna "Data" encontrada por busca exata (fallback - "Dia" não encontrado): "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+    } else if (colData && colDia) {
+        console.log(`[Smartsheet] ⚠️ Coluna "Data" encontrada mas IGNORADA porque "Dia" já foi encontrado: "${colData.title}" (ID: ${colData.id}, Type: ${colData.type})`);
     }
     
     // Terceiro: tentar "Modificado" (pode conter timestamp com data)
@@ -300,12 +304,16 @@ async function buscarMedicoesDoSmartsheet() {
         }
     }
     
-    // Se não encontrou, tentar outras variações
+    // Se não encontrou, tentar outras variações (MAS NUNCA substituir "Dia" se já foi encontrado)
     if (!colDia) {
-        colDia = findCol((t) => {
+        const colEncontrada = findCol((t) => {
             const lower = t.toLowerCase().trim();
+            // PRIORIDADE: "dia" primeiro, depois "data"
+            if (lower === "dia") {
+                return true;
+            }
             // Tentar "data" ou "dia" exato primeiro
-            if (lower === "data" || lower === "dia") {
+            if (lower === "data") {
                 return true;
             }
             // Depois tentar outras variações
@@ -328,30 +336,59 @@ async function buscarMedicoesDoSmartsheet() {
                    lower.includes("data início") ||
                    lower.includes("data inicio");
         });
-        if (colDia) {
-            console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+        if (colEncontrada) {
+            // Se encontrou "Dia", usar. Se encontrou "Data", só usar se "Dia" não foi encontrado antes
+            const lowerEncontrada = colEncontrada.title.toLowerCase().trim();
+            if (lowerEncontrada === "dia" || !colDia) {
+                colDia = colEncontrada;
+                console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca flexível: "${colDia.title}" (ID: ${colDia.id}, Type: ${colDia.type})`);
+            }
         }
     }
     
-    // Se não encontrou, tentar buscar por tipo DATE ou DATETIME
+    // Se não encontrou, tentar buscar por tipo DATE ou DATETIME (MAS priorizar "Dia" se existir)
     if (!colDia) {
-        colDia = sheet.columns.find(c => c.type === 'DATE' || c.type === 'DATETIME');
-        if (colDia) {
-            console.log(`[Smartsheet] ✅ Coluna de data encontrada por tipo: "${colDia.title}" (Type: ${colDia.type})`);
+        // Primeiro tentar encontrar "Dia" por tipo
+        const colDiaPorTipo = sheet.columns.find(c => (c.type === 'DATE' || c.type === 'DATETIME') && c.title.toLowerCase().trim() === "dia");
+        if (colDiaPorTipo) {
+            colDia = colDiaPorTipo;
+            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por tipo: "${colDia.title}" (Type: ${colDia.type}) ⭐ É A COLUNA DIA!`);
+        } else {
+            // Se não encontrou "Dia", tentar qualquer coluna DATE ou DATETIME
+            const colPorTipo = sheet.columns.find(c => c.type === 'DATE' || c.type === 'DATETIME');
+            if (colPorTipo) {
+                colDia = colPorTipo;
+                console.log(`[Smartsheet] ✅ Coluna de data encontrada por tipo: "${colDia.title}" (Type: ${colDia.type})`);
+            }
         }
     }
     
     // Se ainda não encontrou, tentar buscar qualquer coluna que contenha "data", "dia", "modificado" ou "date" no nome
+    // MAS priorizar "Dia" se existir
     if (!colDia) {
-        const possiveis = sheet.columns.filter(c => {
+        // Primeiro tentar encontrar "Dia"
+        const possiveisDia = sheet.columns.filter(c => {
             const lower = c.title.toLowerCase();
-            return (lower.includes("data") || lower.includes("dia") || lower.includes("date") || lower.includes("modificado")) && 
+            return lower.includes("dia") && 
                    !lower.includes("hora") && 
-                   !lower.includes("time");
+                   !lower.includes("time") &&
+                   lower.length <= 10; // "Dia" é curto
         });
-        if (possiveis.length > 0) {
-            colDia = possiveis[0];
-            console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca ampla: "${colDia.title}"`);
+        if (possiveisDia.length > 0) {
+            colDia = possiveisDia[0];
+            console.log(`[Smartsheet] ✅ Coluna "Dia" encontrada por busca ampla: "${colDia.title}" ⭐ É A COLUNA DIA!`);
+        } else {
+            // Se não encontrou "Dia", tentar outras opções
+            const possiveis = sheet.columns.filter(c => {
+                const lower = c.title.toLowerCase();
+                return (lower.includes("data") || lower.includes("dia") || lower.includes("date") || lower.includes("modificado")) && 
+                       !lower.includes("hora") && 
+                       !lower.includes("time");
+            });
+            if (possiveis.length > 0) {
+                colDia = possiveis[0];
+                console.log(`[Smartsheet] ✅ Coluna de data encontrada por busca ampla: "${colDia.title}"`);
+            }
         }
     }
     
