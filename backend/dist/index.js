@@ -1274,6 +1274,34 @@ process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     process.exit(1);
 });
+// Iniciar sincronização automática
+// Sincroniza a cada 5 minutos (300000 ms)
+const INTERVALO_SINCRONIZACAO = 5 * 60 * 1000; // 5 minutos
+
+// Função para executar sincronização com tratamento de erros
+async function executarSincronizacaoAutomatica() {
+    try {
+        await sincronizarSmartsheet();
+    } catch (error) {
+        console.error("[Sincronização Automática] ❌ Erro na sincronização automática:", error);
+        // Não lançar erro para não interromper o servidor
+    }
+}
+
+// Executar sincronização imediatamente ao iniciar (após 30 segundos para dar tempo do servidor inicializar)
+setTimeout(() => {
+    console.log("[Sincronização Automática] 🚀 Iniciando primeira sincronização automática...");
+    executarSincronizacaoAutomatica();
+}, 30000);
+
+// Configurar sincronização periódica
+setInterval(() => {
+    console.log("[Sincronização Automática] ⏰ Executando sincronização automática periódica...");
+    executarSincronizacaoAutomatica();
+}, INTERVALO_SINCRONIZACAO);
+
+console.log(`[Sincronização Automática] ⚙️ Sincronização automática configurada para executar a cada ${INTERVALO_SINCRONIZACAO / 1000 / 60} minutos`);
+
 app.listen(PORT, () => {
     // eslint-disable-next-line no-console
     console.log(`Backend rodando na porta ${PORT}`);
