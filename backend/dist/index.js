@@ -972,14 +972,14 @@ app.get("/medicoes/smartsheet", async (_req, res) => {
         });
     }
 });
-// Sincronizar apontamentos do Smartsheet e subtrair do estoque
-app.post("/medicoes/sincronizar-smartsheet", async (req, res) => {
+// Função reutilizável para sincronizar apontamentos do Smartsheet
+async function sincronizarSmartsheet() {
     try {
-        console.log("[Sincronização] 🔄 Iniciando sincronização de apontamentos do Smartsheet...");
+        console.log("[Sincronização Automática] 🔄 Iniciando sincronização de apontamentos do Smartsheet...");
         
         // Buscar apontamentos do Smartsheet
         const medicoesSmartsheet = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
-        console.log(`[Sincronização] 📋 ${medicoesSmartsheet.length} apontamentos encontrados no Smartsheet`);
+        console.log(`[Sincronização Automática] 📋 ${medicoesSmartsheet.length} apontamentos encontrados no Smartsheet`);
         
         let processados = 0;
         let atualizados = 0;
@@ -1127,7 +1127,7 @@ app.post("/medicoes/sincronizar-smartsheet", async (req, res) => {
                         data: { estoqueAtual: novoEstoque }
                     });
                     
-                    console.log(`[Sincronização] ✅ Material ${materialConsumido.codigoItem}: ${materialConsumido.quantidade} ${material.unidade} subtraído. Estoque: ${material.estoqueAtual} → ${novoEstoque}`);
+                    console.log(`[Sincronização Automática] ✅ Material ${materialConsumido.codigoItem}: ${materialConsumido.quantidade} ${material.unidade} subtraído. Estoque: ${material.estoqueAtual} → ${novoEstoque}`);
                     atualizados++;
                 }
                 
@@ -1135,21 +1135,31 @@ app.post("/medicoes/sincronizar-smartsheet", async (req, res) => {
             } catch (error) {
                 erros++;
                 errosDetalhes.push(`Erro ao processar apontamento: ${error.message}`);
-                console.error(`[Sincronização] ❌ Erro ao processar apontamento:`, error);
+                console.error(`[Sincronização Automática] ❌ Erro ao processar apontamento:`, error);
             }
         }
         
-        console.log(`[Sincronização] ✅ Sincronização concluída: ${processados} apontamentos processados, ${atualizados} materiais atualizados, ${erros} erros`);
+        console.log(`[Sincronização Automática] ✅ Sincronização concluída: ${processados} apontamentos processados, ${atualizados} materiais atualizados, ${erros} erros`);
         
-        res.json({
+        return {
             sucesso: true,
             processados,
             atualizados,
             erros,
             errosDetalhes: errosDetalhes.length > 0 ? errosDetalhes : undefined
-        });
+        };
     } catch (error) {
-        console.error("[Sincronização] ❌ Erro geral na sincronização:", error);
+        console.error("[Sincronização Automática] ❌ Erro geral na sincronização:", error);
+        throw error;
+    }
+}
+
+// Endpoint manual para sincronização (mantido para compatibilidade)
+app.post("/medicoes/sincronizar-smartsheet", async (req, res) => {
+    try {
+        const resultado = await sincronizarSmartsheet();
+        res.json(resultado);
+    } catch (error) {
         res.status(500).json({
             error: "Erro ao sincronizar apontamentos do Smartsheet",
             detalhes: error.message
