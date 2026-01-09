@@ -446,6 +446,50 @@ async function buscarMedicoesDoSmartsheet() {
     const colTipoHora = findCol((t) => t.includes("tipo de hora") || t.includes("tipo hora"));
     const colQtdEventos = findCol((t) => t.includes("qtde de eventos") || t.includes("quantidade de eventos"));
     const colEtapaProcesso = findCol((t) => t.includes("etapa de processo") || t.includes("etapa processo") || t.includes("descrição de tarefas"));
+    
+    // Colunas de materiais
+    const colTipoDano = findCol((t) => t.includes("tipo de dano"));
+    const colDanoCodigo = findCol((t) => t === "dano" || t.includes("dano (código)"));
+    const colLarguraDano = findCol((t) => t.includes("largura do dano"));
+    const colComprimentoDano = findCol((t) => t.includes("comprimento do dano"));
+    const colEtapaLixamento = findCol((t) => t.includes("etapa do lixamento") || t.includes("etapa de lixamento"));
+    
+    // Resina
+    const colResinaTipo = findCol((t) => t.includes("qual é a resina") || t.includes("qual a resina"));
+    const colResinaQuantidade = findCol((t) => t.includes("quantidade de resina"));
+    const colResinaCatalisador = findCol((t) => t.includes("catalisador da resina"));
+    const colResinaLote = findCol((t) => t.includes("lote da resina"));
+    const colResinaValidade = findCol((t) => t.includes("data de validade da resina"));
+    
+    // Massa
+    const colMassaTipo = findCol((t) => t.includes("massa de colagem"));
+    const colMassaQuantidade = findCol((t) => t.includes("quantidade de massa"));
+    const colMassaCatalisador = findCol((t) => t.includes("catalisador da massa"));
+    const colMassaLote = findCol((t) => t.includes("lote da massa"));
+    const colMassaValidade = findCol((t) => t.includes("data de validade da massa"));
+    
+    // Núcleo
+    const colNucleoTipo = findCol((t) => t === "núcleo");
+    const colNucleoEspessura = findCol((t) => t.includes("espessura do núcleo") || t.includes("espessura do núcleo"));
+    const colNucleoTipoNucleo = findCol((t) => t.includes("tipo do núcleo"));
+    
+    // PU
+    const colPuTipo = findCol((t) => t.includes("massa pu") || t.includes("massa pu (filler)"));
+    const colPuMassaPeso = findCol((t) => t.includes("peso da massa pu"));
+    const colPuCatalisadorPeso = findCol((t) => t.includes("peso do catalisador do pu"));
+    const colPuLote = findCol((t) => t.includes("lote do pu"));
+    const colPuValidade = findCol((t) => t.includes("data de validade do pu"));
+    
+    // Gel
+    const colGelTipo = findCol((t) => t === "gel");
+    const colGelPeso = findCol((t) => t.includes("peso do gel"));
+    const colGelCatalisadorPeso = findCol((t) => t.includes("peso do catalisador do gel"));
+    const colGelLote = findCol((t) => t.includes("lote do gel"));
+    const colGelValidade = findCol((t) => t.includes("data de validade do gel"));
+    
+    // Retrabalho
+    const colRetrabalho = findCol((t) => t.includes("é retrabalho") || t.includes("retrabalho"));
+    
     // Função para formatar hora no formato HH:MM
     const formatarHora = (hora) => {
         if (!hora) return null;
@@ -861,23 +905,36 @@ async function buscarMedicoesDoSmartsheet() {
             quantidadeEventos: buscaValor(row, colQtdEventos?.id) ? Number(buscaValor(row, colQtdEventos.id)) : null,
             horaInicio: horaInicio,
             horaFim: horaFim,
-            tipoDano: null,
-            danoCodigo: null,
-            larguraDanoMm: null,
-            comprimentoDanoMm: null,
+            tipoDano: buscaValor(row, colTipoDano?.id),
+            danoCodigo: buscaValor(row, colDanoCodigo?.id),
+            larguraDanoMm: buscaValor(row, colLarguraDano?.id) ? Number(buscaValor(row, colLarguraDano.id)) : null,
+            comprimentoDanoMm: buscaValor(row, colComprimentoDano?.id) ? Number(buscaValor(row, colComprimentoDano.id)) : null,
             etapaProcesso: buscaValor(row, colEtapaProcesso?.id),
-            etapaLixamento: null,
-            resinaTipo: null,
-            resinaQuantidade: null,
-            massaTipo: null,
-            massaQuantidade: null,
-            nucleoTipo: null,
-            nucleoEspessuraMm: null,
-            puTipo: null,
-            puMassaPeso: null,
-            gelTipo: null,
-            gelPeso: null,
-            retrabalho: null,
+            etapaLixamento: buscaValor(row, colEtapaLixamento?.id),
+            resinaTipo: buscaValor(row, colResinaTipo?.id),
+            resinaQuantidade: buscaValor(row, colResinaQuantidade?.id) ? Number(buscaValor(row, colResinaQuantidade.id)) : null,
+            resinaCatalisador: buscaValor(row, colResinaCatalisador?.id),
+            resinaLote: buscaValor(row, colResinaLote?.id),
+            resinaValidade: buscaValor(row, colResinaValidade?.id),
+            massaTipo: buscaValor(row, colMassaTipo?.id),
+            massaQuantidade: buscaValor(row, colMassaQuantidade?.id) ? Number(buscaValor(row, colMassaQuantidade.id)) : null,
+            massaCatalisador: buscaValor(row, colMassaCatalisador?.id),
+            massaLote: buscaValor(row, colMassaLote?.id),
+            massaValidade: buscaValor(row, colMassaValidade?.id),
+            nucleoTipo: buscaValor(row, colNucleoTipo?.id),
+            nucleoEspessuraMm: buscaValor(row, colNucleoEspessura?.id) ? Number(buscaValor(row, colNucleoEspessura.id)) : null,
+            nucleoTipoNucleo: buscaValor(row, colNucleoTipoNucleo?.id),
+            puTipo: buscaValor(row, colPuTipo?.id),
+            puMassaPeso: buscaValor(row, colPuMassaPeso?.id) ? Number(buscaValor(row, colPuMassaPeso.id)) : null,
+            puCatalisadorPeso: buscaValor(row, colPuCatalisadorPeso?.id) ? Number(buscaValor(row, colPuCatalisadorPeso.id)) : null,
+            puLote: buscaValor(row, colPuLote?.id),
+            puValidade: buscaValor(row, colPuValidade?.id),
+            gelTipo: buscaValor(row, colGelTipo?.id),
+            gelPeso: buscaValor(row, colGelPeso?.id) ? Number(buscaValor(row, colGelPeso.id)) : null,
+            gelCatalisadorPeso: buscaValor(row, colGelCatalisadorPeso?.id) ? Number(buscaValor(row, colGelCatalisadorPeso.id)) : null,
+            gelLote: buscaValor(row, colGelLote?.id),
+            gelValidade: buscaValor(row, colGelValidade?.id),
+            retrabalho: buscaValor(row, colRetrabalho?.id) ? (buscaValor(row, colRetrabalho.id).toLowerCase() === "sim") : null,
             material: null,
             quantidadeConsumida: 0,
         };

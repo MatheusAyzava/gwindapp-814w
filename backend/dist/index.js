@@ -972,6 +972,191 @@ app.get("/medicoes/smartsheet", async (_req, res) => {
         });
     }
 });
+// Sincronizar apontamentos do Smartsheet e subtrair do estoque
+app.post("/medicoes/sincronizar-smartsheet", async (req, res) => {
+    try {
+        console.log("[Sincronização] 🔄 Iniciando sincronização de apontamentos do Smartsheet...");
+        
+        // Buscar apontamentos do Smartsheet
+        const medicoesSmartsheet = await (0, smartsheetService_1.buscarMedicoesDoSmartsheet)();
+        console.log(`[Sincronização] 📋 ${medicoesSmartsheet.length} apontamentos encontrados no Smartsheet`);
+        
+        let processados = 0;
+        let atualizados = 0;
+        let erros = 0;
+        const errosDetalhes = [];
+        
+        for (const medicaoSmartsheet of medicoesSmartsheet) {
+            try {
+                // Verificar se já existe uma medição com os mesmos dados (evitar duplicatas)
+                const chaveUnica = `${medicaoSmartsheet.dia || ''}_${medicaoSmartsheet.horaInicio || ''}_${medicaoSmartsheet.horaFim || ''}_${medicaoSmartsheet.projeto || ''}_${medicaoSmartsheet.equipe || ''}`;
+                
+                // Processar materiais consumidos
+                const materiaisConsumidos = [];
+                
+                // Resina
+                if (medicaoSmartsheet.resinaTipo && medicaoSmartsheet.resinaQuantidade && medicaoSmartsheet.resinaQuantidade > 0) {
+                    materiaisConsumidos.push({
+                        codigoItem: medicaoSmartsheet.resinaTipo,
+                        quantidade: medicaoSmartsheet.resinaQuantidade,
+                        tipo: 'resina'
+                    });
+                }
+                
+                // Massa
+                if (medicaoSmartsheet.massaTipo && medicaoSmartsheet.massaQuantidade && medicaoSmartsheet.massaQuantidade > 0) {
+                    materiaisConsumidos.push({
+                        codigoItem: medicaoSmartsheet.massaTipo,
+                        quantidade: medicaoSmartsheet.massaQuantidade,
+                        tipo: 'massa'
+                    });
+                }
+                
+                // PU
+                if (medicaoSmartsheet.puTipo && medicaoSmartsheet.puMassaPeso && medicaoSmartsheet.puMassaPeso > 0) {
+                    materiaisConsumidos.push({
+                        codigoItem: medicaoSmartsheet.puTipo,
+                        quantidade: medicaoSmartsheet.puMassaPeso,
+                        tipo: 'pu'
+                    });
+                }
+                
+                // Gel
+                if (medicaoSmartsheet.gelTipo && medicaoSmartsheet.gelPeso && medicaoSmartsheet.gelPeso > 0) {
+                    materiaisConsumidos.push({
+                        codigoItem: medicaoSmartsheet.gelTipo,
+                        quantidade: medicaoSmartsheet.gelPeso,
+                        tipo: 'gel'
+                    });
+                }
+                
+                // Processar cada material consumido
+                for (const materialConsumido of materiaisConsumidos) {
+                    // Buscar material no banco pelo código
+                    const material = await prisma.material.findFirst({
+                        where: {
+                            codigoItem: materialConsumido.codigoItem
+                        }
+                    });
+                    
+                    if (!material) {
+                        console.warn(`[Sincronização] ⚠️ Material não encontrado: ${materialConsumido.codigoItem}`);
+                        errosDetalhes.push(`Material ${materialConsumido.codigoItem} não encontrado no banco`);
+                        continue;
+                    }
+                    
+                    // Verificar se já existe medição para evitar duplicatas
+                    const medicaoExistente = await prisma.medicao.findFirst({
+                        where: {
+                            materialId: material.id,
+                            dia: medicaoSmartsheet.dia ? new Date(medicaoSmartsheet.dia) : undefined,
+                            horaInicio: medicaoSmartsheet.horaInicio || undefined,
+                            horaFim: medicaoSmartsheet.horaFim || undefined,
+                            projeto: medicaoSmartsheet.projeto || undefined,
+                            equipe: medicaoSmartsheet.equipe || undefined,
+                            origem: 'smartsheet'
+                        }
+                    });
+                    
+                    if (medicaoExistente) {
+                        console.log(`[Sincronização] ⏭️ Medição já existe, pulando: ${materialConsumido.codigoItem}`);
+                        continue;
+                    }
+                    
+                    // Criar medição
+                    const novaMedicao = await prisma.medicao.create({
+                        data: {
+                            materialId: material.id,
+                            projeto: medicaoSmartsheet.projeto || 'N/A',
+                            torre: medicaoSmartsheet.torre,
+                            quantidadeConsumida: materialConsumido.quantidade,
+                            origem: 'smartsheet',
+                            cliente: medicaoSmartsheet.cliente,
+                            dia: medicaoSmartsheet.dia ? new Date(medicaoSmartsheet.dia) : undefined,
+                            equipe: medicaoSmartsheet.equipe,
+                            escala: medicaoSmartsheet.escala,
+                            etapaLixamento: medicaoSmartsheet.etapaLixamento,
+                            etapaProcesso: medicaoSmartsheet.etapaProcesso,
+                            horaFim: medicaoSmartsheet.horaFim,
+                            horaInicio: medicaoSmartsheet.horaInicio,
+                            tipoDano: medicaoSmartsheet.tipoDano,
+                            danoCodigo: medicaoSmartsheet.danoCodigo,
+                            larguraDanoMm: medicaoSmartsheet.larguraDanoMm,
+                            comprimentoDanoMm: medicaoSmartsheet.comprimentoDanoMm,
+                            resinaTipo: medicaoSmartsheet.resinaTipo,
+                            resinaQuantidade: medicaoSmartsheet.resinaQuantidade,
+                            resinaCatalisador: medicaoSmartsheet.resinaCatalisador,
+                            resinaLote: medicaoSmartsheet.resinaLote,
+                            resinaValidade: medicaoSmartsheet.resinaValidade,
+                            massaTipo: medicaoSmartsheet.massaTipo,
+                            massaQuantidade: medicaoSmartsheet.massaQuantidade,
+                            massaCatalisador: medicaoSmartsheet.massaCatalisador,
+                            massaLote: medicaoSmartsheet.massaLote,
+                            massaValidade: medicaoSmartsheet.massaValidade,
+                            nucleoTipo: medicaoSmartsheet.nucleoTipo,
+                            nucleoEspessuraMm: medicaoSmartsheet.nucleoEspessuraMm,
+                            puTipo: medicaoSmartsheet.puTipo,
+                            puMassaPeso: medicaoSmartsheet.puMassaPeso,
+                            puCatalisadorPeso: medicaoSmartsheet.puCatalisadorPeso,
+                            puLote: medicaoSmartsheet.puLote,
+                            puValidade: medicaoSmartsheet.puValidade,
+                            gelTipo: medicaoSmartsheet.gelTipo,
+                            gelPeso: medicaoSmartsheet.gelPeso,
+                            gelCatalisadorPeso: medicaoSmartsheet.gelCatalisadorPeso,
+                            gelLote: medicaoSmartsheet.gelLote,
+                            gelValidade: medicaoSmartsheet.gelValidade,
+                            retrabalho: medicaoSmartsheet.retrabalho,
+                            semana: medicaoSmartsheet.semana,
+                            supervisor: medicaoSmartsheet.supervisor,
+                            tecnicoLider: medicaoSmartsheet.tecnicoLider,
+                            tipoAcesso: medicaoSmartsheet.tipoAcesso,
+                            tipoHora: medicaoSmartsheet.tipoHora,
+                            tipoIntervalo: medicaoSmartsheet.tipoIntervalo,
+                            quantidadeEventos: medicaoSmartsheet.quantidadeEventos,
+                            quantidadeTecnicos: medicaoSmartsheet.quantidadeTecnicos,
+                            nomesTecnicos: medicaoSmartsheet.nomesTecnicos,
+                            pa: medicaoSmartsheet.pa,
+                            plataforma: medicaoSmartsheet.plataforma
+                        }
+                    });
+                    
+                    // Subtrair do estoque
+                    const novoEstoque = Math.max(0, material.estoqueAtual - materialConsumido.quantidade);
+                    await prisma.material.update({
+                        where: { id: material.id },
+                        data: { estoqueAtual: novoEstoque }
+                    });
+                    
+                    console.log(`[Sincronização] ✅ Material ${materialConsumido.codigoItem}: ${materialConsumido.quantidade} ${material.unidade} subtraído. Estoque: ${material.estoqueAtual} → ${novoEstoque}`);
+                    atualizados++;
+                }
+                
+                processados++;
+            } catch (error) {
+                erros++;
+                errosDetalhes.push(`Erro ao processar apontamento: ${error.message}`);
+                console.error(`[Sincronização] ❌ Erro ao processar apontamento:`, error);
+            }
+        }
+        
+        console.log(`[Sincronização] ✅ Sincronização concluída: ${processados} apontamentos processados, ${atualizados} materiais atualizados, ${erros} erros`);
+        
+        res.json({
+            sucesso: true,
+            processados,
+            atualizados,
+            erros,
+            errosDetalhes: errosDetalhes.length > 0 ? errosDetalhes : undefined
+        });
+    } catch (error) {
+        console.error("[Sincronização] ❌ Erro geral na sincronização:", error);
+        res.status(500).json({
+            error: "Erro ao sincronizar apontamentos do Smartsheet",
+            detalhes: error.message
+        });
+    }
+});
+
 // Listar todas as medições do banco de dados
 app.get("/medicoes", async (req, res) => {
     try {
