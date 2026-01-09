@@ -991,58 +991,143 @@ async function sincronizarSmartsheet() {
                 // Verificar se já existe uma medição com os mesmos dados (evitar duplicatas)
                 const chaveUnica = `${medicaoSmartsheet.dia || ''}_${medicaoSmartsheet.horaInicio || ''}_${medicaoSmartsheet.horaFim || ''}_${medicaoSmartsheet.projeto || ''}_${medicaoSmartsheet.equipe || ''}`;
                 
+                // Função para normalizar quantidade (converter "3kg" -> 3, "900g" -> 0.9, etc)
+                const normalizarQuantidade = (valor) => {
+                    if (!valor) return null;
+                    const str = String(valor).trim().toLowerCase();
+                    // Remover espaços e converter
+                    const numero = parseFloat(str.replace(/[^\d.,]/g, '').replace(',', '.'));
+                    if (isNaN(numero)) return null;
+                    // Se contém "g" (gramas), converter para kg (dividir por 1000)
+                    if (str.includes('g') && !str.includes('kg')) {
+                        return numero / 1000;
+                    }
+                    return numero;
+                };
+                
                 // Processar materiais consumidos
                 const materiaisConsumidos = [];
                 
-                // Resina
-                if (medicaoSmartsheet.resinaTipo && medicaoSmartsheet.resinaQuantidade && medicaoSmartsheet.resinaQuantidade > 0) {
-                    materiaisConsumidos.push({
-                        codigoItem: medicaoSmartsheet.resinaTipo,
-                        quantidade: medicaoSmartsheet.resinaQuantidade,
-                        tipo: 'resina'
+                // Log para debug (primeiras 3 linhas)
+                if (processados < 3) {
+                    console.log(`[Sincronização] 🔍 Apontamento ${processados + 1}:`, {
+                        dia: medicaoSmartsheet.dia,
+                        projeto: medicaoSmartsheet.projeto,
+                        equipe: medicaoSmartsheet.equipe,
+                        resinaTipo: medicaoSmartsheet.resinaTipo,
+                        resinaQuantidade: medicaoSmartsheet.resinaQuantidade,
+                        massaTipo: medicaoSmartsheet.massaTipo,
+                        massaQuantidade: medicaoSmartsheet.massaQuantidade,
+                        puTipo: medicaoSmartsheet.puTipo,
+                        puMassaPeso: medicaoSmartsheet.puMassaPeso,
+                        gelTipo: medicaoSmartsheet.gelTipo,
+                        gelPeso: medicaoSmartsheet.gelPeso
                     });
+                }
+                
+                // Resina
+                if (medicaoSmartsheet.resinaTipo) {
+                    const quantidadeNormalizada = normalizarQuantidade(medicaoSmartsheet.resinaQuantidade);
+                    if (quantidadeNormalizada && quantidadeNormalizada > 0) {
+                        materiaisConsumidos.push({
+                            codigoItem: medicaoSmartsheet.resinaTipo,
+                            quantidade: quantidadeNormalizada,
+                            tipo: 'resina'
+                        });
+                        if (processados < 3) {
+                            console.log(`[Sincronização] ✅ Resina encontrada: ${medicaoSmartsheet.resinaTipo} - ${quantidadeNormalizada} kg`);
+                        }
+                    }
                 }
                 
                 // Massa
-                if (medicaoSmartsheet.massaTipo && medicaoSmartsheet.massaQuantidade && medicaoSmartsheet.massaQuantidade > 0) {
-                    materiaisConsumidos.push({
-                        codigoItem: medicaoSmartsheet.massaTipo,
-                        quantidade: medicaoSmartsheet.massaQuantidade,
-                        tipo: 'massa'
-                    });
+                if (medicaoSmartsheet.massaTipo) {
+                    const quantidadeNormalizada = normalizarQuantidade(medicaoSmartsheet.massaQuantidade);
+                    if (quantidadeNormalizada && quantidadeNormalizada > 0) {
+                        materiaisConsumidos.push({
+                            codigoItem: medicaoSmartsheet.massaTipo,
+                            quantidade: quantidadeNormalizada,
+                            tipo: 'massa'
+                        });
+                        if (processados < 3) {
+                            console.log(`[Sincronização] ✅ Massa encontrada: ${medicaoSmartsheet.massaTipo} - ${quantidadeNormalizada} kg`);
+                        }
+                    }
                 }
                 
                 // PU
-                if (medicaoSmartsheet.puTipo && medicaoSmartsheet.puMassaPeso && medicaoSmartsheet.puMassaPeso > 0) {
-                    materiaisConsumidos.push({
-                        codigoItem: medicaoSmartsheet.puTipo,
-                        quantidade: medicaoSmartsheet.puMassaPeso,
-                        tipo: 'pu'
-                    });
+                if (medicaoSmartsheet.puTipo) {
+                    const quantidadeNormalizada = normalizarQuantidade(medicaoSmartsheet.puMassaPeso);
+                    if (quantidadeNormalizada && quantidadeNormalizada > 0) {
+                        materiaisConsumidos.push({
+                            codigoItem: medicaoSmartsheet.puTipo,
+                            quantidade: quantidadeNormalizada,
+                            tipo: 'pu'
+                        });
+                        if (processados < 3) {
+                            console.log(`[Sincronização] ✅ PU encontrado: ${medicaoSmartsheet.puTipo} - ${quantidadeNormalizada} kg`);
+                        }
+                    }
                 }
                 
                 // Gel
-                if (medicaoSmartsheet.gelTipo && medicaoSmartsheet.gelPeso && medicaoSmartsheet.gelPeso > 0) {
-                    materiaisConsumidos.push({
-                        codigoItem: medicaoSmartsheet.gelTipo,
-                        quantidade: medicaoSmartsheet.gelPeso,
-                        tipo: 'gel'
-                    });
+                if (medicaoSmartsheet.gelTipo) {
+                    const quantidadeNormalizada = normalizarQuantidade(medicaoSmartsheet.gelPeso);
+                    if (quantidadeNormalizada && quantidadeNormalizada > 0) {
+                        materiaisConsumidos.push({
+                            codigoItem: medicaoSmartsheet.gelTipo,
+                            quantidade: quantidadeNormalizada,
+                            tipo: 'gel'
+                        });
+                        if (processados < 3) {
+                            console.log(`[Sincronização] ✅ Gel encontrado: ${medicaoSmartsheet.gelTipo} - ${quantidadeNormalizada} kg`);
+                        }
+                    }
+                }
+                
+                if (materiaisConsumidos.length === 0 && processados < 3) {
+                    console.log(`[Sincronização] ⚠️ Nenhum material consumido encontrado neste apontamento`);
                 }
                 
                 // Processar cada material consumido
                 for (const materialConsumido of materiaisConsumidos) {
-                    // Buscar material no banco pelo código
-                    const material = await prisma.material.findFirst({
+                    // Buscar material no banco pelo código (busca exata primeiro)
+                    let material = await prisma.material.findFirst({
                         where: {
                             codigoItem: materialConsumido.codigoItem
                         }
                     });
                     
+                    // Se não encontrou, tentar buscar por descrição (caso o código no Smartsheet seja a descrição)
                     if (!material) {
-                        console.warn(`[Sincronização] ⚠️ Material não encontrado: ${materialConsumido.codigoItem}`);
+                        material = await prisma.material.findFirst({
+                            where: {
+                                descricao: {
+                                    contains: materialConsumido.codigoItem,
+                                    mode: 'insensitive'
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Se ainda não encontrou, tentar buscar onde o código do item contém parte do código do Smartsheet
+                    if (!material) {
+                        const codigoLimpo = materialConsumido.codigoItem.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                        const todosMateriais = await prisma.material.findMany();
+                        material = todosMateriais.find(m => {
+                            const codigoMaterial = m.codigoItem.replace(/[^A-Z0-9]/gi, '').toUpperCase();
+                            return codigoMaterial.includes(codigoLimpo) || codigoLimpo.includes(codigoMaterial);
+                        });
+                    }
+                    
+                    if (!material) {
+                        console.warn(`[Sincronização] ⚠️ Material não encontrado: ${materialConsumido.codigoItem} (tipo: ${materialConsumido.tipo})`);
                         errosDetalhes.push(`Material ${materialConsumido.codigoItem} não encontrado no banco`);
                         continue;
+                    }
+                    
+                    if (processados < 3) {
+                        console.log(`[Sincronização] ✅ Material encontrado no banco: ${material.codigoItem} - ${material.descricao} (Estoque atual: ${material.estoqueAtual} ${material.unidade})`);
                     }
                     
                     // Verificar se já existe medição para evitar duplicatas
