@@ -1359,33 +1359,52 @@ process.on('uncaughtException', (error) => {
     console.error('Uncaught Exception:', error);
     process.exit(1);
 });
-// Iniciar sincronização automática
-// Sincroniza a cada 5 minutos (300000 ms)
-const INTERVALO_SINCRONIZACAO = 5 * 60 * 1000; // 5 minutos
+// ============================================
+// SINCRONIZAÇÃO AUTOMÁTICA COM SMARTSHEET
+// ============================================
+// Esta função roda automaticamente sem necessidade de intervenção manual
+// Verifica novos apontamentos no Smartsheet e subtrai do estoque automaticamente
+
+// Intervalo de sincronização: a cada 3 minutos (180000 ms)
+// Reduzido de 5 para 3 minutos para resposta mais rápida
+const INTERVALO_SINCRONIZACAO = 3 * 60 * 1000; // 3 minutos
 
 // Função para executar sincronização com tratamento de erros
 async function executarSincronizacaoAutomatica() {
     try {
-        await sincronizarSmartsheet();
+        console.log("[Sincronização Automática] ⏰ Iniciando sincronização automática...");
+        const resultado = await sincronizarSmartsheet();
+        if (resultado && resultado.atualizados > 0) {
+            console.log(`[Sincronização Automática] ✅ ${resultado.atualizados} material(is) atualizado(s) automaticamente!`);
+        }
     } catch (error) {
         console.error("[Sincronização Automática] ❌ Erro na sincronização automática:", error);
         // Não lançar erro para não interromper o servidor
+        // A sincronização continuará tentando no próximo intervalo
     }
 }
 
-// Executar sincronização imediatamente ao iniciar (após 30 segundos para dar tempo do servidor inicializar)
+// Executar sincronização logo após o servidor iniciar (após 10 segundos)
+// Reduzido de 30 para 10 segundos para iniciar mais rápido
 setTimeout(() => {
-    console.log("[Sincronização Automática] 🚀 Iniciando primeira sincronização automática...");
+    console.log("[Sincronização Automática] 🚀 Executando primeira sincronização automática...");
     executarSincronizacaoAutomatica();
-}, 30000);
+}, 10000);
 
-// Configurar sincronização periódica
-setInterval(() => {
+// Configurar sincronização periódica automática
+// Esta função roda continuamente sem necessidade de clicar em botão
+const intervaloId = setInterval(() => {
     console.log("[Sincronização Automática] ⏰ Executando sincronização automática periódica...");
     executarSincronizacaoAutomatica();
 }, INTERVALO_SINCRONIZACAO);
 
-console.log(`[Sincronização Automática] ⚙️ Sincronização automática configurada para executar a cada ${INTERVALO_SINCRONIZACAO / 1000 / 60} minutos`);
+// Garantir que o intervalo continue rodando mesmo se houver erros
+process.on('SIGTERM', () => {
+    clearInterval(intervaloId);
+});
+
+console.log(`[Sincronização Automática] ⚙️ Sincronização automática ATIVADA - executando a cada ${INTERVALO_SINCRONIZACAO / 1000 / 60} minutos`);
+console.log(`[Sincronização Automática] 📌 NÃO é necessário clicar em botão - a sincronização é totalmente automática!`);
 
 app.listen(PORT, () => {
     // eslint-disable-next-line no-console
