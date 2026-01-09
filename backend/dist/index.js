@@ -1148,12 +1148,30 @@ async function sincronizarSmartsheet() {
                         continue;
                     }
                     
+                    // Função helper para converter valores para string quando necessário
+                    const converterParaString = (valor) => {
+                        if (valor === null || valor === undefined) return null;
+                        if (typeof valor === 'number') {
+                            // Se for NaN, retornar null
+                            if (isNaN(valor)) return null;
+                            return String(valor);
+                        }
+                        return String(valor);
+                    };
+                    
+                    // Função helper para converter valores numéricos (tratar NaN)
+                    const converterParaNumero = (valor) => {
+                        if (valor === null || valor === undefined) return null;
+                        const num = Number(valor);
+                        return isNaN(num) ? null : num;
+                    };
+                    
                     // Criar medição
                     const novaMedicao = await prisma.medicao.create({
                         data: {
                             materialId: material.id,
                             projeto: medicaoSmartsheet.projeto || 'N/A',
-                            torre: medicaoSmartsheet.torre,
+                            torre: converterParaString(medicaoSmartsheet.torre),
                             quantidadeConsumida: materialConsumido.quantidade,
                             origem: 'smartsheet',
                             cliente: medicaoSmartsheet.cliente,
@@ -1166,41 +1184,41 @@ async function sincronizarSmartsheet() {
                             horaInicio: medicaoSmartsheet.horaInicio,
                             tipoDano: medicaoSmartsheet.tipoDano,
                             danoCodigo: medicaoSmartsheet.danoCodigo,
-                            larguraDanoMm: medicaoSmartsheet.larguraDanoMm,
-                            comprimentoDanoMm: medicaoSmartsheet.comprimentoDanoMm,
+                            larguraDanoMm: converterParaNumero(medicaoSmartsheet.larguraDanoMm),
+                            comprimentoDanoMm: converterParaNumero(medicaoSmartsheet.comprimentoDanoMm),
                             resinaTipo: medicaoSmartsheet.resinaTipo,
-                            resinaQuantidade: medicaoSmartsheet.resinaQuantidade,
-                            resinaCatalisador: medicaoSmartsheet.resinaCatalisador,
-                            resinaLote: medicaoSmartsheet.resinaLote,
+                            resinaQuantidade: converterParaNumero(medicaoSmartsheet.resinaQuantidade),
+                            resinaCatalisador: converterParaString(medicaoSmartsheet.resinaCatalisador),
+                            resinaLote: converterParaString(medicaoSmartsheet.resinaLote),
                             resinaValidade: medicaoSmartsheet.resinaValidade,
                             massaTipo: medicaoSmartsheet.massaTipo,
-                            massaQuantidade: medicaoSmartsheet.massaQuantidade,
+                            massaQuantidade: converterParaNumero(medicaoSmartsheet.massaQuantidade),
                             massaCatalisador: medicaoSmartsheet.massaCatalisador,
                             massaLote: medicaoSmartsheet.massaLote,
                             massaValidade: medicaoSmartsheet.massaValidade,
                             nucleoTipo: medicaoSmartsheet.nucleoTipo,
-                            nucleoEspessuraMm: medicaoSmartsheet.nucleoEspessuraMm,
+                            nucleoEspessuraMm: converterParaNumero(medicaoSmartsheet.nucleoEspessuraMm),
                             puTipo: medicaoSmartsheet.puTipo,
-                            puMassaPeso: medicaoSmartsheet.puMassaPeso,
-                            puCatalisadorPeso: medicaoSmartsheet.puCatalisadorPeso,
-                            puLote: medicaoSmartsheet.puLote,
+                            puMassaPeso: converterParaNumero(medicaoSmartsheet.puMassaPeso),
+                            puCatalisadorPeso: converterParaNumero(medicaoSmartsheet.puCatalisadorPeso),
+                            puLote: converterParaString(medicaoSmartsheet.puLote),
                             puValidade: medicaoSmartsheet.puValidade,
                             gelTipo: medicaoSmartsheet.gelTipo,
-                            gelPeso: medicaoSmartsheet.gelPeso,
-                            gelCatalisadorPeso: medicaoSmartsheet.gelCatalisadorPeso,
-                            gelLote: medicaoSmartsheet.gelLote,
+                            gelPeso: converterParaNumero(medicaoSmartsheet.gelPeso),
+                            gelCatalisadorPeso: converterParaNumero(medicaoSmartsheet.gelCatalisadorPeso),
+                            gelLote: converterParaString(medicaoSmartsheet.gelLote),
                             gelValidade: medicaoSmartsheet.gelValidade,
                             retrabalho: medicaoSmartsheet.retrabalho,
-                            semana: medicaoSmartsheet.semana,
+                            semana: converterParaString(medicaoSmartsheet.semana),
                             supervisor: medicaoSmartsheet.supervisor,
                             tecnicoLider: medicaoSmartsheet.tecnicoLider,
                             tipoAcesso: medicaoSmartsheet.tipoAcesso,
                             tipoHora: medicaoSmartsheet.tipoHora,
                             tipoIntervalo: medicaoSmartsheet.tipoIntervalo,
-                            quantidadeEventos: medicaoSmartsheet.quantidadeEventos,
-                            quantidadeTecnicos: medicaoSmartsheet.quantidadeTecnicos,
+                            quantidadeEventos: converterParaNumero(medicaoSmartsheet.quantidadeEventos),
+                            quantidadeTecnicos: converterParaNumero(medicaoSmartsheet.quantidadeTecnicos),
                             nomesTecnicos: medicaoSmartsheet.nomesTecnicos,
-                            pa: medicaoSmartsheet.pa,
+                            pa: converterParaString(medicaoSmartsheet.pa),
                             plataforma: medicaoSmartsheet.plataforma
                         }
                     });

@@ -212,23 +212,178 @@ async function registrarMedicaoNoSmartsheet(dados) {
             console.warn("[Smartsheet] Nenhum nome válido encontrado. Pulando célula Nome dos Técnicos.");
         }
     }
+    // Adicionar campos de materiais (resina, massa, PU, gel, etc.)
+    const findColMaterial = (matcher) => sheet.columns.find((c) => matcher(c.title.toLowerCase()));
+    
+    // Resina
+    const colResinaTipo = findColMaterial((t) => t.includes("qual é a resina") || t.includes("resina"));
+    const colResinaQuantidade = findColMaterial((t) => t.includes("quantidade de resina"));
+    const colResinaCatalisador = findColMaterial((t) => t.includes("catalisador da resina"));
+    const colResinaLote = findColMaterial((t) => t.includes("lote da resina"));
+    const colResinaValidade = findColMaterial((t) => t.includes("data de validade da resina") || t.includes("validade da resina"));
+    
+    // Massa
+    const colMassaTipo = findColMaterial((t) => t.includes("massa de colagem"));
+    const colMassaQuantidade = findColMaterial((t) => t.includes("quantidade de massa"));
+    const colMassaCatalisador = findColMaterial((t) => t.includes("catalisador da massa") || t.includes("catalisador da massa"));
+    const colMassaLote = findColMaterial((t) => t.includes("lote da massa"));
+    const colMassaValidade = findColMaterial((t) => t.includes("data de validade da massa") || t.includes("validade da massa"));
+    
+    // Núcleo
+    const colNucleoTipo = findColMaterial((t) => t === "núcleo" || t === "nucleo");
+    const colNucleoEspessura = findColMaterial((t) => t.includes("espessura do núcleo") || t.includes("espessura do nucleo"));
+    const colNucleoTipoNucleo = findColMaterial((t) => t.includes("tipo do núcleo") || t.includes("tipo do nucleo"));
+    
+    // PU
+    const colPuTipo = findColMaterial((t) => t.includes("massa pu") || t.includes("pu (filler)"));
+    const colPuPeso = findColMaterial((t) => t.includes("peso da massa pu"));
+    const colPuCatalisador = findColMaterial((t) => t.includes("peso do catalisador do pu") || t.includes("catalisador do pu"));
+    const colPuLote = findColMaterial((t) => t.includes("lote do pu"));
+    const colPuValidade = findColMaterial((t) => t.includes("data de validade do pu") || t.includes("validade do pu"));
+    
+    // Gel
+    const colGelTipo = findColMaterial((t) => t === "gel");
+    const colGelPeso = findColMaterial((t) => t.includes("peso do gel"));
+    const colGelCatalisador = findColMaterial((t) => t.includes("peso do catalisador do gel") || t.includes("catalisador do gel"));
+    const colGelLote = findColMaterial((t) => t.includes("lote do gel"));
+    const colGelValidade = findColMaterial((t) => t.includes("data de validade do gel") || t.includes("validade do gel"));
+    
+    // Dano e processo
+    const colTipoDano = findColMaterial((t) => t.includes("tipo de dano"));
+    const colDanoCodigo = findColMaterial((t) => t === "dano" || t.includes("dano (código)"));
+    const colLarguraDano = findColMaterial((t) => t.includes("largura do dano"));
+    const colComprimentoDano = findColMaterial((t) => t.includes("comprimento do dano"));
+    const colEtapaProcesso = findColMaterial((t) => t.includes("etapa de processo") || t.includes("etapa do processo"));
+    const colEtapaLixamento = findColMaterial((t) => t.includes("etapa do lixamento"));
+    const colRetrabalho = findColMaterial((t) => t.includes("é retrabalho") || t.includes("retrabalho"));
+    
+    // Adicionar células de materiais
+    if (colResinaTipo && dados.resinaTipo) {
+        cells.push({ columnId: colResinaTipo.id, value: dados.resinaTipo });
+    }
+    if (colResinaQuantidade && dados.resinaQuantidade) {
+        cells.push({ columnId: colResinaQuantidade.id, value: dados.resinaQuantidade });
+    }
+    if (colResinaCatalisador && dados.resinaCatalisador) {
+        cells.push({ columnId: colResinaCatalisador.id, value: String(dados.resinaCatalisador) });
+    }
+    if (colResinaLote && dados.resinaLote) {
+        cells.push({ columnId: colResinaLote.id, value: String(dados.resinaLote) });
+    }
+    if (colResinaValidade && dados.resinaValidade) {
+        const validadeDate = typeof dados.resinaValidade === "string" ? dados.resinaValidade : dados.resinaValidade.toISOString().substring(0, 10);
+        cells.push({ columnId: colResinaValidade.id, value: validadeDate });
+    }
+    
+    if (colMassaTipo && dados.massaTipo) {
+        cells.push({ columnId: colMassaTipo.id, value: dados.massaTipo });
+    }
+    if (colMassaQuantidade && dados.massaQuantidade) {
+        cells.push({ columnId: colMassaQuantidade.id, value: dados.massaQuantidade });
+    }
+    if (colMassaCatalisador && dados.massaCatalisador) {
+        cells.push({ columnId: colMassaCatalisador.id, value: String(dados.massaCatalisador) });
+    }
+    if (colMassaLote && dados.massaLote) {
+        cells.push({ columnId: colMassaLote.id, value: String(dados.massaLote) });
+    }
+    if (colMassaValidade && dados.massaValidade) {
+        const validadeDate = typeof dados.massaValidade === "string" ? dados.massaValidade : dados.massaValidade.toISOString().substring(0, 10);
+        cells.push({ columnId: colMassaValidade.id, value: validadeDate });
+    }
+    
+    if (colNucleoTipo && dados.nucleoTipo) {
+        cells.push({ columnId: colNucleoTipo.id, value: dados.nucleoTipo });
+    }
+    if (colNucleoEspessura && dados.nucleoEspessuraMm) {
+        cells.push({ columnId: colNucleoEspessura.id, value: dados.nucleoEspessuraMm });
+    }
+    if (colNucleoTipoNucleo && dados.nucleoTipoNucleo) {
+        cells.push({ columnId: colNucleoTipoNucleo.id, value: dados.nucleoTipoNucleo });
+    }
+    
+    if (colPuTipo && dados.puTipo) {
+        cells.push({ columnId: colPuTipo.id, value: dados.puTipo });
+    }
+    if (colPuPeso && dados.puMassaPeso) {
+        cells.push({ columnId: colPuPeso.id, value: dados.puMassaPeso });
+    }
+    if (colPuCatalisador && dados.puCatalisadorPeso) {
+        cells.push({ columnId: colPuCatalisador.id, value: dados.puCatalisadorPeso });
+    }
+    if (colPuLote && dados.puLote) {
+        cells.push({ columnId: colPuLote.id, value: String(dados.puLote) });
+    }
+    if (colPuValidade && dados.puValidade) {
+        const validadeDate = typeof dados.puValidade === "string" ? dados.puValidade : dados.puValidade.toISOString().substring(0, 10);
+        cells.push({ columnId: colPuValidade.id, value: validadeDate });
+    }
+    
+    if (colGelTipo && dados.gelTipo) {
+        cells.push({ columnId: colGelTipo.id, value: dados.gelTipo });
+    }
+    if (colGelPeso && dados.gelPeso) {
+        cells.push({ columnId: colGelPeso.id, value: dados.gelPeso });
+    }
+    if (colGelCatalisador && dados.gelCatalisadorPeso) {
+        cells.push({ columnId: colGelCatalisador.id, value: dados.gelCatalisadorPeso });
+    }
+    if (colGelLote && dados.gelLote) {
+        cells.push({ columnId: colGelLote.id, value: String(dados.gelLote) });
+    }
+    if (colGelValidade && dados.gelValidade) {
+        const validadeDate = typeof dados.gelValidade === "string" ? dados.gelValidade : dados.gelValidade.toISOString().substring(0, 10);
+        cells.push({ columnId: colGelValidade.id, value: validadeDate });
+    }
+    
+    if (colTipoDano && dados.tipoDano) {
+        cells.push({ columnId: colTipoDano.id, value: dados.tipoDano });
+    }
+    if (colDanoCodigo && dados.danoCodigo) {
+        cells.push({ columnId: colDanoCodigo.id, value: dados.danoCodigo });
+    }
+    if (colLarguraDano && dados.larguraDanoMm) {
+        cells.push({ columnId: colLarguraDano.id, value: dados.larguraDanoMm });
+    }
+    if (colComprimentoDano && dados.comprimentoDanoMm) {
+        cells.push({ columnId: colComprimentoDano.id, value: dados.comprimentoDanoMm });
+    }
+    if (colEtapaProcesso && dados.etapaProcesso) {
+        cells.push({ columnId: colEtapaProcesso.id, value: dados.etapaProcesso });
+    }
+    if (colEtapaLixamento && dados.etapaLixamento) {
+        cells.push({ columnId: colEtapaLixamento.id, value: dados.etapaLixamento });
+    }
+    if (colRetrabalho && dados.retrabalho !== undefined && dados.retrabalho !== null) {
+        cells.push({ columnId: colRetrabalho.id, value: dados.retrabalho ? "Sim" : "Não" });
+    }
+    
     if (cells.length === 0) {
         // Nada para enviar
+        console.warn("[Smartsheet] ⚠️ Nenhuma célula para enviar. Verifique se os dados estão preenchidos.");
         return;
     }
-    await axios_1.default.post(`https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows`, {
-        toBottom: true,
-        rows: [
-            {
-                cells,
+    
+    try {
+        console.log(`[Smartsheet] 📤 Enviando ${cells.length} células para o Smartsheet...`);
+        await axios_1.default.post(`https://api.smartsheet.com/2.0/sheets/${SHEET_MEDICOES}/rows`, {
+            toBottom: true,
+            rows: [
+                {
+                    cells,
+                },
+            ],
+        }, {
+            headers: {
+                Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
+                "Content-Type": "application/json",
             },
-        ],
-    }, {
-        headers: {
-            Authorization: `Bearer ${SMARTSHEET_TOKEN}`,
-            "Content-Type": "application/json",
-        },
-    });
+        });
+        console.log("[Smartsheet] ✅ Medição enviada com sucesso para o Smartsheet!");
+    } catch (error) {
+        console.error("[Smartsheet] ❌ Erro ao enviar medição para o Smartsheet:", error.response?.data || error.message);
+        throw error;
+    }
 }
 // Busca todas as medições diretamente do Smartsheet
 async function buscarMedicoesDoSmartsheet() {
